@@ -1,13 +1,15 @@
 package com.originofmiracles.miraclebridge;
 
+import org.slf4j.Logger;
+
 import com.mojang.logging.LogUtils;
+
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import org.slf4j.Logger;
 
 /**
  * Miracle Bridge - Origin of Miracles 核心前置模组
@@ -31,15 +33,20 @@ public class MiracleBridge {
     
     private static final Logger LOGGER = LogUtils.getLogger();
     
+    private static MiracleBridge instance;
+    
     public MiracleBridge() {
+        instance = this;
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         
         // Register setup methods
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::clientSetup);
         
-        // Register the mod with Forge event bus
-        MinecraftForge.EVENT_BUS.register(this);
+        // 延迟注册到 Forge 事件总线，避免构造函数中泄漏 this
+        modEventBus.addListener((FMLCommonSetupEvent event) -> {
+            MinecraftForge.EVENT_BUS.register(instance);
+        });
         
         LOGGER.info("Miracle Bridge 已初始化 - 连接现实与奇迹...");
     }

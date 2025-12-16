@@ -1,14 +1,15 @@
 package com.originofmiracles.miraclebridge.bridge;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
+import org.slf4j.Logger;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.originofmiracles.miraclebridge.browser.MiracleBrowser;
-import org.slf4j.Logger;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
 
 /**
  * JavaScript ↔ Java 通信桥梁 API
@@ -144,7 +145,11 @@ public class BridgeAPI {
      */
     @FunctionalInterface
     public interface BridgeHandler extends Function<JsonObject, JsonObject> {
-        @Override
+        /**
+         * 处理桥梁请求
+         * @param request 请求的 JSON 对象
+         * @return 响应的 JSON 对象
+         */
         JsonObject handle(JsonObject request);
         
         @Override

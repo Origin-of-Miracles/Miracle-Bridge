@@ -1,8 +1,6 @@
 package com.originofmiracles.miraclebridge.entity.ysm;
 
 import com.mojang.logging.LogUtils;
-import com.originofmiracles.miraclebridge.entity.IEntityDriver;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.fml.ModList;
 import org.slf4j.Logger;

@@ -1,15 +1,21 @@
 package com.originofmiracles.miraclebridge.browser;
 
+import javax.annotation.Nullable;
+
+import org.slf4j.Logger;
+
 import com.cinemamod.mcef.MCEF;
 import com.cinemamod.mcef.MCEFBrowser;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.*;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.logging.LogUtils;
-import net.minecraft.client.renderer.GameRenderer;
-import org.slf4j.Logger;
 
-import javax.annotation.Nullable;
+import net.minecraft.client.renderer.GameRenderer;
 
 /**
  * MCEF 浏览器实例的高层封装。
@@ -59,8 +65,13 @@ public class MiracleBrowser {
         this.height = height;
         
         try {
-            this.browser = MCEF.createBrowser(url, transparent);
-            this.browser.resize(width, height);
+            MCEFBrowser createdBrowser = MCEF.createBrowser(url, transparent);
+            if (createdBrowser == null) {
+                LOGGER.error("MCEF.createBrowser 返回 null");
+                return false;
+            }
+            this.browser = createdBrowser;
+            createdBrowser.resize(width, height);
             LOGGER.info("浏览器已创建: {} ({}x{})", url, width, height);
             return true;
         } catch (Exception e) {
@@ -112,10 +123,10 @@ public class MiracleBrowser {
      * 在指定位置将浏览器渲染到屏幕
      * @param x 屏幕 X 位置
      * @param y 屏幕 Y 位置
-     * @param width 渲染宽度
-     * @param height 渲染高度
+     * @param renderWidth 渲染宽度
+     * @param renderHeight 渲染高度
      */
-    public void render(int x, int y, int width, int height) {
+    public void render(int x, int y, int renderWidth, int renderHeight) {
         if (browser == null) return;
         
         int textureId = getTextureId();
@@ -124,14 +135,14 @@ public class MiracleBrowser {
         RenderSystem.setShaderTexture(0, textureId);
         RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
         RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA);
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
         
         BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
         bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
         
-        bufferBuilder.vertex(x, y + height, 0).uv(0f, 1f).color(255, 255, 255, 255).endVertex();
-        bufferBuilder.vertex(x + width, y + height, 0).uv(1f, 1f).color(255, 255, 255, 255).endVertex();
-        bufferBuilder.vertex(x + width, y, 0).uv(1f, 0f).color(255, 255, 255, 255).endVertex();
+        bufferBuilder.vertex(x, y + renderHeight, 0).uv(0f, 1f).color(255, 255, 255, 255).endVertex();
+        bufferBuilder.vertex(x + renderWidth, y + renderHeight, 0).uv(1f, 1f).color(255, 255, 255, 255).endVertex();
+        bufferBuilder.vertex(x + renderWidth, y, 0).uv(1f, 0f).color(255, 255, 255, 255).endVertex();
         bufferBuilder.vertex(x, y, 0).uv(0f, 0f).color(255, 255, 255, 255).endVertex();
         
         BufferUploader.drawWithShader(bufferBuilder.end());
@@ -210,5 +221,37 @@ public class MiracleBrowser {
     @Nullable
     public MCEFBrowser getRawBrowser() {
         return browser;
+    }
+    
+    /**
+     * 获取浏览器宽度
+     */
+    public int getWidth() {
+        return width;
+    }
+    
+    /**
+     * 获取浏览器高度
+     */
+    public int getHeight() {
+        return height;
+    }
+    
+    /**
+     * 是否透明背景
+     */
+    public boolean isTransparent() {
+        return transparent;
+    }
+    
+    /**
+     * 检查 MCEF 是否可用且已初始化
+     */
+    public static boolean isMCEFAvailable() {
+        try {
+            return MCEF.isInitialized();
+        } catch (NoClassDefFoundError e) {
+            return false;
+        }
     }
 }

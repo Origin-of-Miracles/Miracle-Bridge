@@ -51,11 +51,19 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 repositories {
     mavenCentral()
     
+    // FabricMC maven - 用于解析 MCEF 的传递依赖
+    maven {
+        name = 'FabricMC'
+        url = uri('https://maven.fabricmc.net/')
+    }
+    
     // MCEF Repository
     maven {
+        name = 'MCEF Releases'
         url = uri('https://mcef-download.cinemamod.com/repositories/releases')
     }
     maven {
+        name = 'MCEF Snapshots'
         url = uri('https://mcef-download.cinemamod.com/repositories/snapshots')
     }
 }
@@ -64,9 +72,12 @@ dependencies {
     // Forge
     minecraft 'net.minecraftforge:forge:1.20.1-47.2.0'
     
-    // MCEF - Browser Engine
-    compileOnly fg.deobf('com.cinemamod:mcef:2.1.6-1.20.1')
-    runtimeOnly fg.deobf('com.cinemamod:mcef-forge:2.1.6-1.20.1')
+    // MCEF - Browser Engine (从本地 libs 目录加载)
+    // 官方 Maven 仓库暂时不可用，使用手动下载的 JAR
+    compileOnly files('libs/mcef-forge-2.1.6-1.20.1.jar')
+    
+    // JSR 305 Annotations (提供 @Nullable 等注解)
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
     
     // Utilities
     implementation 'com.google.code.gson:gson:2.10.1'
