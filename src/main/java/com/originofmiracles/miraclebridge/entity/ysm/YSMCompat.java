@@ -1,9 +1,11 @@
 package com.originofmiracles.miraclebridge.entity.ysm;
 
+import org.slf4j.Logger;
+
 import com.mojang.logging.LogUtils;
+
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.fml.ModList;
-import org.slf4j.Logger;
 
 /**
  * YSM（Yes Steve Model）兼容层
@@ -94,8 +96,13 @@ public class YSMCompat {
      * 以 OP 权限执行 YSM 命令
      */
     private static void executeCommand(ServerPlayer player, String command) {
+        var server = player.getServer();
+        if (server == null) {
+            LOGGER.warn("无法执行 YSM 命令: 服务器未就绪");
+            return;
+        }
         try {
-            player.getServer().getCommands().performPrefixedCommand(
+            server.getCommands().performPrefixedCommand(
                 player.createCommandSourceStack().withPermission(4),
                 command
             );

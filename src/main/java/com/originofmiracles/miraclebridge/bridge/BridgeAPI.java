@@ -2,6 +2,9 @@ package com.originofmiracles.miraclebridge.bridge;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import org.slf4j.Logger;
@@ -10,6 +13,11 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.originofmiracles.miraclebridge.browser.MiracleBrowser;
+import com.originofmiracles.miraclebridge.config.ClientConfig;
+import com.originofmiracles.miraclebridge.config.ServerConfig;
+import com.originofmiracles.miraclebridge.network.C2SBridgeActionPacket;
+import com.originofmiracles.miraclebridge.network.ModNetworkHandler;
+import com.originofmiracles.miraclebridge.util.ThreadScheduler;
 
 /**
  * JavaScript ↔ Java 通信桥梁 API
@@ -40,16 +48,23 @@ public class BridgeAPI {
     private final MiracleBrowser browser;
     private final Map<String, BridgeHandler> handlers = new HashMap<>();
     
+    /**
+     * 待处理的服务端请求（线程安全）
+     * Key: requestId, Value: CompletableFuture<JsonObject>
+     */
+    private final Map<String, CompletableFuture<JsonObject>> pendingRequests = new ConcurrentHashMap<>();
+    
     public BridgeAPI(MiracleBrowser browser) {
         this.browser = browser;
         registerDefaultHandlers();
+        LOGGER.info("BridgeAPI 已初始化");
     }
     
     /**
      * 注册默认 API 处理器
      */
     private void registerDefaultHandlers() {
-        // 示例：获取玩家信息
+        // 示例：获取玩家信息（客户端本地处理）
         register("getPlayerInfo", request -> {
             JsonObject response = new JsonObject();
             response.addProperty("name", "Player");
@@ -58,17 +73,11 @@ public class BridgeAPI {
             return response;
         });
         
-        // 示例：传送玩家
+        // 示例：传送玩家（需要服务端处理）
         register("teleport", request -> {
-            double x = request.get("x").getAsDouble();
-            double y = request.get("y").getAsDouble();
-            double z = request.get("z").getAsDouble();
-            
-            // TODO: 实现实际传送逻辑
-            LOGGER.info("请求传送到: ({}, {}, {})", x, y, z);
-            
+            // 这个处理器只是占位符，实际处理通过 requestFromServer 完成
             JsonObject response = new JsonObject();
-            response.addProperty("success", true);
+            response.addProperty("error", "请使用 requestFromServer 方法");
             return response;
         });
         
@@ -86,13 +95,24 @@ public class BridgeAPI {
     }
     
     /**
-     * 处理来自 JavaScript 的请求
+     * 处理来自 JavaScript 的请求（本地处理）
      * @param action 动作名称
      * @param requestJson 请求负载（JSON 字符串）
      * @return 响应 JSON 字符串
      */
     public String handleRequest(String action, String requestJson) {
+        // 日志记录
+        if (ClientConfig.shouldLogBridgeRequests()) {
+            LOGGER.info("Bridge 请求: action={}, payload={}", action, requestJson);
+        }
+        
         try {
+            // 检查请求大小
+            if (requestJson.length() > ServerConfig.getMaxRequestSize()) {
+                LOGGER.warn("请求体过大: {} bytes", requestJson.length());
+                return errorResponse("请求体过大");
+            }
+            
             JsonObject request = GSON.fromJson(requestJson, JsonObject.class);
             
             BridgeHandler handler = handlers.get(action);
@@ -102,7 +122,13 @@ public class BridgeAPI {
             }
             
             JsonObject response = handler.handle(request);
-            return GSON.toJson(response);
+            String responseJson = GSON.toJson(response);
+            
+            if (ClientConfig.shouldLogBridgeRequests()) {
+                LOGGER.info("Bridge 响应: action={}, response={}", action, responseJson);
+            }
+            
+            return responseJson;
             
         } catch (Exception e) {
             LOGGER.error("处理桥梁请求时出错: {}", action, e);
@@ -127,8 +153,14 @@ public class BridgeAPI {
             eventName, dataJson
         );
         
-        browser.executeJavaScript(script);
-        LOGGER.debug("已推送事件: {} 数据: {}", eventName, dataJson);
+        // 确保在客户端主线程执行 JS
+        ThreadScheduler.runOnClientThread(() -> {
+            browser.executeJavaScript(script);
+        });
+        
+        if (ClientConfig.shouldLogBridgeRequests()) {
+            LOGGER.debug("已推送事件: {} 数据: {}", eventName, dataJson);
+        }
     }
     
     /**
@@ -138,6 +170,82 @@ public class BridgeAPI {
         JsonObject error = new JsonObject();
         error.addProperty("error", message);
         return GSON.toJson(error);
+    }
+    
+    // ==================== 服务端请求 ====================
+    
+    /**
+     * 向服务端发送请求并异步获取响应
+     * 
+     * @param action 动作名称
+     * @param payload 请求参数
+     * @return 包含响应的 CompletableFuture
+     */
+    public CompletableFuture<JsonObject> requestFromServer(String action, JsonObject payload) {
+        String requestId = UUID.randomUUID().toString();
+        CompletableFuture<JsonObject> future = new CompletableFuture<>();
+        
+        // 注册等待响应
+        pendingRequests.put(requestId, future);
+        
+        // 设置超时
+        int timeout = ServerConfig.getRequestTimeout();
+        ThreadScheduler.runLater(() -> {
+            CompletableFuture<JsonObject> pending = pendingRequests.remove(requestId);
+            if (pending != null && !pending.isDone()) {
+                JsonObject error = new JsonObject();
+                error.addProperty("error", "请求超时");
+                pending.complete(error);
+            }
+        }, timeout, java.util.concurrent.TimeUnit.MILLISECONDS);
+        
+        // 发送网络包到服务端
+        String payloadJson = GSON.toJson(payload);
+        ModNetworkHandler.sendToServer(new C2SBridgeActionPacket(action, requestId, payloadJson));
+        
+        if (ClientConfig.shouldLogBridgeRequests()) {
+            LOGGER.debug("已发送服务端请求: action={}, requestId={}", action, requestId);
+        }
+        
+        return future;
+    }
+    
+    /**
+     * 处理来自服务端的响应
+     * 应在收到 S2CFullSyncPacket (type="bridge_response") 时调用
+     * 
+     * @param responseJson 响应 JSON 字符串
+     */
+    public void handleServerResponse(String responseJson) {
+        try {
+            JsonObject response = GSON.fromJson(responseJson, JsonObject.class);
+            String requestId = response.has("requestId") ? response.get("requestId").getAsString() : null;
+            
+            if (requestId == null) {
+                LOGGER.warn("收到无 requestId 的服务端响应");
+                return;
+            }
+            
+            CompletableFuture<JsonObject> pending = pendingRequests.remove(requestId);
+            if (pending != null) {
+                pending.complete(response);
+                if (ClientConfig.shouldLogBridgeRequests()) {
+                    LOGGER.debug("已完成服务端请求: requestId={}", requestId);
+                }
+            } else {
+                LOGGER.warn("收到未知 requestId 的响应: {}", requestId);
+            }
+            
+        } catch (Exception e) {
+            LOGGER.error("解析服务端响应失败", e);
+        }
+    }
+    
+    /**
+     * 获取浏览器实例
+     */
+    public MiracleBrowser getBrowser() {
+        return browser;
     }
     
     /**

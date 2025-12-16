@@ -3,12 +3,22 @@ package com.originofmiracles.miraclebridge;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
+import com.originofmiracles.miraclebridge.browser.BrowserManager;
+import com.originofmiracles.miraclebridge.config.ClientConfig;
+import com.originofmiracles.miraclebridge.config.ConfigReloader;
+import com.originofmiracles.miraclebridge.config.ConfigWatcher;
+import com.originofmiracles.miraclebridge.config.ModConfigs;
+import com.originofmiracles.miraclebridge.network.ModNetworkHandler;
+import com.originofmiracles.miraclebridge.util.ThreadScheduler;
 
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
 /**
@@ -39,9 +49,13 @@ public class MiracleBridge {
         instance = this;
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         
+        // 注册配置
+        ModConfigs.register();
+        
         // Register setup methods
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::clientSetup);
+        modEventBus.addListener(this::loadComplete);
         
         // 延迟注册到 Forge 事件总线，避免构造函数中泄漏 this
         modEventBus.addListener((FMLCommonSetupEvent event) -> {
@@ -59,7 +73,7 @@ public class MiracleBridge {
         
         event.enqueueWork(() -> {
             // 注册网络数据包
-            // TODO: 初始化客户端 ↔ 服务端通信通道
+            ModNetworkHandler.register();
             
             LOGGER.info("网络处理器已注册");
         });
@@ -72,10 +86,60 @@ public class MiracleBridge {
         LOGGER.info("Miracle Bridge 客户端设置");
         
         event.enqueueWork(() -> {
-            // 初始化 MCEF 浏览器引擎
-            // TODO: 初始化 MiracleBrowser 管理器
+            // 初始化 BrowserManager（使用配置中的默认值）
+            BrowserManager.getInstance();
+            
+            // 如果配置了开发服务器 URL，记录日志
+            String devUrl = ClientConfig.getDevServerUrl();
+            if (devUrl != null && !devUrl.isEmpty()) {
+                LOGGER.info("开发服务器 URL: {}", devUrl);
+            }
             
             LOGGER.info("客户端组件已初始化");
         });
+    }
+    
+    /**
+     * 加载完成 - 所有模组都已加载
+     * 在这里启动配置监听器
+     */
+    private void loadComplete(final FMLLoadCompleteEvent event) {
+        LOGGER.info("Miracle Bridge 加载完成");
+        
+        event.enqueueWork(() -> {
+            // 初始化配置快照
+            ConfigReloader.initializeSnapshot();
+            
+            // 启动配置文件监听器
+            ConfigWatcher.getInstance().start();
+            
+            LOGGER.info("配置监听器已启动");
+        });
+    }
+    
+    /**
+     * 服务器停止事件处理
+     */
+    @SubscribeEvent
+    public void onServerStopping(ServerStoppingEvent event) {
+        LOGGER.info("Miracle Bridge 正在清理资源...");
+        
+        // 停止配置监听器
+        ConfigWatcher.getInstance().stop();
+        
+        // 关闭所有浏览器
+        BrowserManager.getInstance().closeAll();
+        
+        // 关闭线程调度器
+        ThreadScheduler.shutdown();
+        
+        LOGGER.info("资源清理完成");
+    }
+    
+    /**
+     * 获取模组实例
+     */
+    public static MiracleBridge getInstance() {
+        return instance;
     }
 }

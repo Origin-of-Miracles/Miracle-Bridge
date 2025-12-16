@@ -1,11 +1,12 @@
 package com.originofmiracles.miraclebridge.browser;
 
 import com.mojang.logging.LogUtils;
+import com.originofmiracles.miraclebridge.config.ClientConfig;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 浏览器实例管理器
@@ -17,9 +18,14 @@ public class BrowserManager {
     
     private static BrowserManager instance;
     
-    private final Map<String, MiracleBrowser> browsers = new HashMap<>();
+    /**
+     * 浏览器实例映射表（线程安全）
+     */
+    private final Map<String, MiracleBrowser> browsers = new ConcurrentHashMap<>();
     
-    private BrowserManager() {}
+    private BrowserManager() {
+        // 私有构造函数，单例模式
+    }
     
     public static BrowserManager getInstance() {
         if (instance == null) {
@@ -29,7 +35,27 @@ public class BrowserManager {
     }
     
     /**
+     * 使用默认配置创建浏览器
+     * 
+     * @param name 浏览器标识符
+     * @param url 初始 URL（如果为 null 或空，使用配置中的开发服务器 URL）
+     * @return 创建的浏览器，失败时返回 null
+     */
+    @Nullable
+    public MiracleBrowser createBrowser(String name, @Nullable String url) {
+        String actualUrl = (url == null || url.isEmpty()) ? ClientConfig.getDevServerUrl() : url;
+        return createBrowser(
+                name,
+                actualUrl,
+                ClientConfig.getBrowserWidth(),
+                ClientConfig.getBrowserHeight(),
+                ClientConfig.BROWSER_TRANSPARENT_BACKGROUND.get()
+        );
+    }
+    
+    /**
      * 创建并注册新浏览器
+     * 
      * @param name 浏览器标识符
      * @param url 初始 URL
      * @param width 视口宽度
@@ -47,10 +73,11 @@ public class BrowserManager {
         MiracleBrowser browser = new MiracleBrowser(transparent);
         if (browser.create(url, width, height)) {
             browsers.put(name, browser);
-            LOGGER.info("已注册浏览器: {}", name);
+            LOGGER.info("已注册浏览器: {} -> {}", name, url);
             return browser;
         }
         
+        LOGGER.error("创建浏览器失败: {}", name);
         return null;
     }
     
@@ -80,5 +107,26 @@ public class BrowserManager {
         LOGGER.info("正在关闭所有浏览器 ({})", browsers.size());
         browsers.values().forEach(MiracleBrowser::close);
         browsers.clear();
+    }
+    
+    /**
+     * 获取当前注册的浏览器数量
+     */
+    public int getBrowserCount() {
+        return browsers.size();
+    }
+    
+    /**
+     * 获取所有已注册的浏览器名称
+     */
+    public java.util.Set<String> getBrowserNames() {
+        return java.util.Collections.unmodifiableSet(browsers.keySet());
+    }
+    
+    /**
+     * 检查指定名称的浏览器是否存在
+     */
+    public boolean hasBrowser(String name) {
+        return browsers.containsKey(name);
     }
 }
