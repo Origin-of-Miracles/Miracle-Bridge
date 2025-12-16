@@ -1,0 +1,106 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+}
+
+version = '0.1.0-alpha'
+group = 'com.originofmiracles.miraclebridge'
+
+base {
+    archivesName = 'miraclebridge'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    
+    runs {
+        client {
+            workingDirectory project.file('run')
+            
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            
+            mods {
+                miraclebridge {
+                    source sourceSets.main
+                }
+            }
+        }
+        
+        server {
+            workingDirectory project.file('run')
+            
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            
+            mods {
+                miraclebridge {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+repositories {
+    mavenCentral()
+    
+    // MCEF Repository
+    maven {
+        url = uri('https://mcef-download.cinemamod.com/repositories/releases')
+    }
+    maven {
+        url = uri('https://mcef-download.cinemamod.com/repositories/snapshots')
+    }
+}
+
+dependencies {
+    // Forge
+    minecraft 'net.minecraftforge:forge:1.20.1-47.2.0'
+    
+    // MCEF - Browser Engine
+    compileOnly fg.deobf('com.cinemamod:mcef:2.1.6-1.20.1')
+    runtimeOnly fg.deobf('com.cinemamod:mcef-forge:2.1.6-1.20.1')
+    
+    // Utilities
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'Specification-Title'     : 'Miracle Bridge',
+                'Specification-Vendor'    : 'Origin of Miracles Dev Team',
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : project.name,
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : 'Origin of Miracles Dev Team',
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+    
+    finalizedBy 'reobfJar'
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/mcmodsrepo"
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

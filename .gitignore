@@ -4,6 +4,52 @@
 # Log file
 *.log
 
+# Gradle
+.gradle/
+build/
+out/
+run/
+
+# IDE - IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# IDE - Eclipse
+.project
+.classpath
+.settings/
+bin/
+*.launch
+.metadata
+.recommenders
+
+# IDE - VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Forge
+run/
+logs/
+crash-reports/
+
+# Minecraft
+options.txt
+optionsof.txt
+servers.dat
+usernamecache.json
+
+# Build outputs (except gradle wrapper)
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Temp files
+*.tmp
+~*
+
 # BlueJ files
 *.ctxt
 

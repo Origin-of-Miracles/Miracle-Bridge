@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "com.originofmiracles.miraclebridge.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "miraclebridge.refmap.json",
+  "mixins": [
+  ],
+  "client": [
+  ],
+  "minVersion": "0.8"
+}
