@@ -6,18 +6,18 @@
 [![Forge](https://img.shields.io/badge/Forge-47.2.0-orange.svg)](https://files.minecraftforge.net/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## 📖 概述
+## 概述
 
 Miracle Bridge 不是一个玩法模组——它是连接 Minecraft Java 引擎与现代 Web/AI 技术的**基础设施**。
 
 ### 核心能力
 
-- 🌐 **Chromium Webview 集成** - 通过 MCEF 实现完整浏览器渲染
-- 🔗 **JS ↔ Java 桥梁** - React 前端与 Minecraft 后端的双向通信
-- 🤖 **实体 AI 接口** - 用于 LLM 驱动角色行为的标准化 API
-- 🎭 **YSM 兼容** - 与 Yes Steve Model 无缝集成以实现高级动画
+- **Chromium Webview 集成** - 通过 MCEF 实现完整浏览器渲染
+- **JS ↔ Java 桥梁** - React 前端与 Minecraft 后端的双向通信
+- **实体 AI 接口** - 用于 LLM 驱动角色行为的标准化 API
+- **YSM 兼容** - 与 Yes Steve Model 无缝集成以实现高级动画
 
-## 🚀 快速开始
+## 快速开始
 
 ### 前置要求
 
@@ -52,7 +52,7 @@ Miracle Bridge 不是一个玩法模组——它是连接 Minecraft Java 引擎�
 
 *YSM 使用与 macOS 不兼容的 C++ 原生库。功能将优雅降级。
 
-## 🏗️ 架构
+## 架构
 
 ```
 ┌─────────────────────────────────────────┐
@@ -77,13 +77,13 @@ Miracle Bridge 不是一个玩法模组——它是连接 Minecraft Java 引擎�
 └─────────────────────────────────────────┘
 ```
 
-## 📚 文档
+## 文档
 
 - **[开发指南](../Docs/docs/dev/miracle_bridge_dev_guide.md)** - 完整技术文档
 - **[API 参考](DEVELOPMENT.md#项目结构)** - Java & JavaScript API 文档
 - **[贡献指南](CONTRIBUTING.md)** - 如何贡献
 
-## 🔌 API 示例
+## API 示例
 
 ### JavaScript → Java
 
@@ -125,18 +125,18 @@ driver.setExpression("happy");
 driver.lookAt(new BlockPos(100, 64, 200));
 ```
 
-## 🛠️ 依赖项
+## 依赖项
 
 - **[MCEF](https://github.com/CinemaMod/mcef)** - Chromium 嵌入式框架
 - **[Yes Steve Model](https://ysm.cfpa.team/)** (可选) - 高级角色模型
 - **Forge** - 模组加载器
 - **Gson** - JSON 序列化
 
-## 📜 许可证
+## 许可证
 
 本项目采用 **MIT 许可证** - 详见 [LICENSE](LICENSE)。
 
-## 🤝 贡献
+## 贡献
 
 我们欢迎贡献！请先阅读我们的[贡献指南](CONTRIBUTING.md)。
 
@@ -144,14 +144,14 @@ driver.lookAt(new BlockPos(100, 64, 200));
 
 加入我们的 [Discord 服务器](https://discord.gg/originofmiracles) 参与讨论。
 
-## 🙏 致谢
+## 致谢
 
 - **CinemaMod 团队** - MCEF 及持续维护
 - **TartaricAcid** - Yes Steve Model
 - **Mojang** - Minecraft
 - **Forge 团队** - 模组框架
 
-## 🌟 相关项目
+## 相关项目
 
 - **[Origin of Miracles 文档](../Docs)** - 项目文档
 - **Shittim OS** - 游戏内操作系统界面（即将推出）
@@ -159,4 +159,4 @@ driver.lookAt(new BlockPos(100, 64, 200));
 
 ---
 
-*由 Origin of Miracles 开发团队用 ❤️ 构建*
+*由 Origin of Miracles 开发团队构建*
