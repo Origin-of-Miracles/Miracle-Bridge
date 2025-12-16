@@ -197,6 +197,55 @@ public class ThreadScheduler {
         return SCHEDULED_EXECUTOR.scheduleAtFixedRate(task, initialDelay, period, unit);
     }
     
+    /**
+     * 重复执行任务直到返回 false
+     * 
+     * @param task 要执行的任务，返回 true 继续执行，返回 false 停止
+     * @param periodTicks 执行周期（以 tick 为单位，1 tick = 50ms）
+     * @return 可取消的 ScheduledFuture
+     */
+    public static ScheduledFuture<?> runRepeating(Supplier<Boolean> task, int periodTicks) {
+        long periodMs = periodTicks * 50L; // 1 tick = 50ms
+        
+        final ScheduledFuture<?>[] futureHolder = new ScheduledFuture<?>[1];
+        
+        futureHolder[0] = SCHEDULED_EXECUTOR.scheduleAtFixedRate(() -> {
+            try {
+                boolean shouldContinue = task.get();
+                if (!shouldContinue && futureHolder[0] != null) {
+                    futureHolder[0].cancel(false);
+                }
+            } catch (Exception e) {
+                LOGGER.error("重复任务执行出错", e);
+                if (futureHolder[0] != null) {
+                    futureHolder[0].cancel(false);
+                }
+            }
+        }, 0, periodMs, TimeUnit.MILLISECONDS);
+        
+        return futureHolder[0];
+    }
+    
+    /**
+     * 在服务端主线程上重复执行任务
+     * 
+     * @param server 服务器实例
+     * @param task 要执行的任务，返回 true 继续执行，返回 false 停止
+     * @param periodTicks 执行周期（以 tick 为单位）
+     * @return 可取消的 ScheduledFuture
+     */
+    public static ScheduledFuture<?> runRepeatingOnServer(MinecraftServer server, Supplier<Boolean> task, int periodTicks) {
+        return runRepeating(() -> {
+            CompletableFuture<Boolean> result = supplyOnServerThread(server, task);
+            try {
+                return result.get(1, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                LOGGER.error("服务端重复任务执行出错", e);
+                return false;
+            }
+        }, periodTicks);
+    }
+    
     // ==================== 线程安全执行 ====================
     
     /**

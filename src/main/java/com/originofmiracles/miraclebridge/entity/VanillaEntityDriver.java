@@ -1,7 +1,6 @@
-package com.originofmiracles.miraclebridge.entity.ysm;
+package com.originofmiracles.miraclebridge.entity;
 
 import com.mojang.logging.LogUtils;
-import com.originofmiracles.miraclebridge.entity.IEntityDriver;
 import com.originofmiracles.miraclebridge.util.ThreadScheduler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
@@ -10,12 +9,19 @@ import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledFuture;
 import java.util.function.Consumer;
 
 /**
- * 用于 YSM 兼容玩家的实体驱动程序实现
+ * 原版实体驱动实现
+ * 
+ * 不依赖 YSM 的回退方案，使用 Minecraft 原生 API。
+ * 主要用于：
+ * - 不支持 YSM 的平台（如 macOS）
+ * - 未安装 YSM 的环境
+ * - 非玩家实体的控制
  */
-public class YSMEntityDriver implements IEntityDriver {
+public class VanillaEntityDriver implements IEntityDriver {
     
     private static final Logger LOGGER = LogUtils.getLogger();
     
@@ -27,32 +33,54 @@ public class YSMEntityDriver implements IEntityDriver {
     private boolean isNavigating = false;
     private BlockPos navigationTarget = null;
     
-    /**
-     * 导航配置
-     */
-    private static final double NAVIGATION_SPEED = 0.2; // 每 tick 移动距离
-    private static final double ARRIVAL_THRESHOLD = 1.5; // 到达阈值
-    private static final int MAX_NAVIGATION_TICKS = 600; // 最大导航时间（30秒）
+    @Nullable
+    private ScheduledFuture<?> navigationTask;
     
-    /**
-     * 导航回调
-     */
     @Nullable
     private Consumer<Boolean> navigationCallback;
     
-    public YSMEntityDriver(ServerPlayer player) {
+    /**
+     * 导航配置
+     */
+    private static final double MOVE_SPEED = 0.15;
+    private static final double ARRIVAL_THRESHOLD = 1.5;
+    private static final int MAX_TICKS = 600;
+    
+    public VanillaEntityDriver(ServerPlayer player) {
         this.player = player;
     }
     
     @Override
     public void playAnimation(String animationId) {
-        YSMCompat.playAnimation(player, animationId);
+        // 原版不支持自定义动画
+        // 可以尝试触发一些原版效果
+        LOGGER.debug("原版驱动不支持自定义动画: {}", animationId);
+        
+        // 根据动画 ID 触发一些原版行为
+        switch (animationId.toLowerCase()) {
+            case "wave" -> {
+                // 原版没有挥手动画，可以发送一个消息
+                LOGGER.debug("触发挥手动作（原版模拟）");
+            }
+            case "sit" -> {
+                // 可以让玩家蹲下
+                player.setShiftKeyDown(true);
+            }
+            case "stand" -> {
+                player.setShiftKeyDown(false);
+            }
+            case "jump" -> {
+                // 触发跳跃
+                player.jumpFromGround();
+            }
+            default -> LOGGER.debug("未知动画: {}", animationId);
+        }
     }
     
     @Override
     public void setExpression(String expressionId) {
-        // 通过 Molang 变量设置表情
-        YSMCompat.executeMolang(player, "v.expression='" + expressionId + "'");
+        // 原版不支持表情
+        LOGGER.debug("原版驱动不支持表情: {}", expressionId);
     }
     
     @Override
@@ -61,14 +89,10 @@ public class YSMEntityDriver implements IEntityDriver {
     }
     
     /**
-     * 带回调的导航方法
-     * 
-     * @param target 目标位置
-     * @param callback 到达或失败时的回调，参数为是否成功
+     * 带回调的导航
      */
     public void navigateTo(BlockPos target, @Nullable Consumer<Boolean> callback) {
         if (isNavigating) {
-            LOGGER.debug("取消当前导航，开始新导航");
             halt();
         }
         
@@ -76,17 +100,13 @@ public class YSMEntityDriver implements IEntityDriver {
         this.navigationCallback = callback;
         this.isNavigating = true;
         
-        LOGGER.debug("开始导航: {} -> {}", player.blockPosition(), target);
+        LOGGER.debug("原版导航: {} -> {}", player.blockPosition(), target);
         
-        // 在服务端主线程执行导航
-        startNavigationLoop();
+        startNavigation();
     }
     
     /**
-     * 异步导航方法
-     * 
-     * @param target 目标位置
-     * @return 导航完成的 Future
+     * 异步导航
      */
     public CompletableFuture<Boolean> navigateToAsync(BlockPos target) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
@@ -95,69 +115,63 @@ public class YSMEntityDriver implements IEntityDriver {
     }
     
     /**
-     * 开始导航循环
+     * 开始导航
      */
-    private void startNavigationLoop() {
+    private void startNavigation() {
         final int[] tickCount = {0};
         
-        ThreadScheduler.runRepeating(() -> {
+        navigationTask = ThreadScheduler.runRepeating(() -> {
             if (!isNavigating || navigationTarget == null || !player.isAlive()) {
-                completeNavigation(false);
-                return false; // 停止循环
-            }
-            
-            tickCount[0]++;
-            if (tickCount[0] > MAX_NAVIGATION_TICKS) {
-                LOGGER.warn("导航超时: {}", navigationTarget);
                 completeNavigation(false);
                 return false;
             }
             
-            // 计算到目标的向量
+            tickCount[0]++;
+            if (tickCount[0] > MAX_TICKS) {
+                LOGGER.warn("原版导航超时");
+                completeNavigation(false);
+                return false;
+            }
+            
             Vec3 playerPos = player.position();
             Vec3 targetPos = Vec3.atCenterOf(navigationTarget);
             Vec3 direction = targetPos.subtract(playerPos);
             double distance = direction.horizontalDistance();
             
-            // 检查是否到达
+            // 到达检测
             if (distance < ARRIVAL_THRESHOLD) {
-                LOGGER.debug("导航完成: {}", navigationTarget);
+                LOGGER.debug("原版导航完成");
                 completeNavigation(true);
                 return false;
             }
             
-            // 计算移动方向
-            Vec3 moveDir = direction.normalize().scale(NAVIGATION_SPEED);
-            
-            // 先看向目标
+            // 移动
+            Vec3 moveDir = direction.normalize().scale(MOVE_SPEED);
             lookAt(navigationTarget);
             
-            // 移动玩家（使用 teleport 模拟移动）
             double newX = playerPos.x + moveDir.x;
-            double newY = playerPos.y; // Y 保持不变，或进行跳跃检测
+            double newY = playerPos.y;
             double newZ = playerPos.z + moveDir.z;
             
-            // 检测是否需要跳跃（前方有障碍）
+            // 简单的障碍检测
             BlockPos frontPos = new BlockPos((int) newX, (int) newY, (int) newZ);
             if (player.level().getBlockState(frontPos).isSolid()) {
-                // 尝试跳跃
-                BlockPos aboveFront = frontPos.above();
-                if (!player.level().getBlockState(aboveFront).isSolid()) {
+                BlockPos above = frontPos.above();
+                if (!player.level().getBlockState(above).isSolid()) {
                     newY += 1.0;
                 }
             }
             
-            // 检测脚下是否有地面
-            BlockPos belowPos = new BlockPos((int) newX, (int) (newY - 1), (int) newZ);
-            if (!player.level().getBlockState(belowPos).isSolid()) {
-                // 下落
+            // 下落检测
+            BlockPos below = new BlockPos((int) newX, (int) (newY - 1), (int) newZ);
+            if (!player.level().getBlockState(below).isSolid()) {
                 newY -= 0.5;
             }
             
             player.teleportTo(newX, newY, newZ);
             
-            return true; // 继续循环
-        }, 1); // 每 tick 执行
+            return true;
+        }, 1);
     }
     
     /**
@@ -166,6 +180,11 @@ public class YSMEntityDriver implements IEntityDriver {
     private void completeNavigation(boolean success) {
         isNavigating = false;
         navigationTarget = null;
+        
+        if (navigationTask != null) {
+            navigationTask.cancel(false);
+            navigationTask = null;
+        }
         
         if (navigationCallback != null) {
             Consumer<Boolean> callback = navigationCallback;
@@ -176,16 +195,14 @@ public class YSMEntityDriver implements IEntityDriver {
     
     @Override
     public void halt() {
-        if (isNavigating) {
-            LOGGER.debug("停止导航");
-            completeNavigation(false);
-        }
-        YSMCompat.stopAnimation(player);
+        LOGGER.debug("原版驱动停止");
+        completeNavigation(false);
+        player.setShiftKeyDown(false);
     }
     
     @Override
     public boolean isAvailable() {
-        return YSMCompat.isYSMLoaded() && player != null && player.isAlive();
+        return player != null && player.isAlive();
     }
     
     @Override
@@ -195,7 +212,6 @@ public class YSMEntityDriver implements IEntityDriver {
     
     @Override
     public void lookAt(BlockPos target) {
-        // 计算视角
         double dx = target.getX() + 0.5 - player.getX();
         double dy = target.getY() + 0.5 - player.getEyeY();
         double dz = target.getZ() + 0.5 - player.getZ();
@@ -214,14 +230,6 @@ public class YSMEntityDriver implements IEntityDriver {
      */
     public boolean isNavigating() {
         return isNavigating;
-    }
-    
-    /**
-     * 获取当前导航目标
-     */
-    @Nullable
-    public BlockPos getNavigationTarget() {
-        return navigationTarget;
     }
     
     /**

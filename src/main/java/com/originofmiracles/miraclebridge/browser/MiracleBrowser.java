@@ -14,6 +14,8 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.logging.LogUtils;
+import com.originofmiracles.miraclebridge.bridge.BridgeAPI;
+import com.originofmiracles.miraclebridge.bridge.BridgeMessageQueue;
 
 import net.minecraft.client.renderer.GameRenderer;
 
@@ -35,6 +37,9 @@ public class MiracleBrowser {
     
     @Nullable
     private MCEFBrowser browser;
+    
+    @Nullable
+    private BridgeAPI bridgeAPI;
     
     private final boolean transparent;
     private int width;
@@ -72,6 +77,13 @@ public class MiracleBrowser {
             }
             this.browser = createdBrowser;
             createdBrowser.resize(width, height);
+            
+            // 初始化 BridgeAPI
+            this.bridgeAPI = new BridgeAPI(this);
+            
+            // 注入桥接脚本
+            injectBridgeScript();
+            
             LOGGER.info("浏览器已创建: {} ({}x{})", url, width, height);
             return true;
         } catch (Exception e) {
@@ -210,8 +222,37 @@ public class MiracleBrowser {
         if (browser != null) {
             browser.close();
             browser = null;
+            bridgeAPI = null;
             LOGGER.info("浏览器已关闭");
         }
+    }
+    
+    /**
+     * 获取 BridgeAPI 实例
+     */
+    @Nullable
+    public BridgeAPI getBridgeAPI() {
+        return bridgeAPI;
+    }
+    
+    /**
+     * 注入桥接脚本到浏览器
+     */
+    private void injectBridgeScript() {
+        if (browser == null) return;
+        
+        // 注入 JS SDK
+        String bridgeScript = BridgeMessageQueue.generateBridgeScript();
+        executeJavaScript(bridgeScript);
+        
+        LOGGER.debug("桥接脚本已注入");
+    }
+    
+    /**
+     * 重新注入桥接脚本（页面导航后调用）
+     */
+    public void reinjectBridgeScript() {
+        injectBridgeScript();
     }
     
     /**

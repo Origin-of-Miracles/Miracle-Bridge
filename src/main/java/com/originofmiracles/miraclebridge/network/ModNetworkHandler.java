@@ -82,6 +82,24 @@ public class ModNetworkHandler {
                 C2SBridgeActionPacket::handle
         );
         
+        // S2C: 服务端 → 客户端 桥接响应
+        CHANNEL.registerMessage(
+                nextId(),
+                S2CBridgeResponsePacket.class,
+                S2CBridgeResponsePacket::encode,
+                S2CBridgeResponsePacket::decode,
+                S2CBridgeResponsePacket::handle
+        );
+        
+        // S2C: 服务端 → 客户端 事件推送
+        CHANNEL.registerMessage(
+                nextId(),
+                S2CEventPushPacket.class,
+                S2CEventPushPacket::encode,
+                S2CEventPushPacket::decode,
+                S2CEventPushPacket::handle
+        );
+        
         LOGGER.debug("已注册 {} 个数据包类型", packetId);
     }
     
@@ -143,6 +161,15 @@ public class ModNetworkHandler {
     }
     
     // ==================== 便捷方法 ====================
+    
+    /**
+     * 向所有玩家广播数据包（sendToAll 的别名）
+     * 
+     * @param packet 数据包
+     */
+    public static <T> void sendToAllPlayers(T packet) {
+        sendToAll(packet);
+    }
     
     /**
      * 向玩家发送全量同步数据

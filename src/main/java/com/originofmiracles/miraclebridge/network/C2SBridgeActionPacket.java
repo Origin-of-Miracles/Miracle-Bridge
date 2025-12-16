@@ -189,13 +189,85 @@ public class C2SBridgeActionPacket {
         JsonObject result = new JsonObject();
         result.addProperty("success", true);
         
-        // TODO: 实现完整的背包序列化
-        // 目前只返回基本信息
-        result.addProperty("mainInventorySize", player.getInventory().items.size());
-        result.addProperty("armorSize", player.getInventory().armor.size());
-        result.addProperty("offhandSize", player.getInventory().offhand.size());
+        // 主背包物品
+        com.google.gson.JsonArray mainInventory = new com.google.gson.JsonArray();
+        for (int i = 0; i < player.getInventory().items.size(); i++) {
+            net.minecraft.world.item.ItemStack stack = player.getInventory().items.get(i);
+            mainInventory.add(serializeItemStack(stack, i));
+        }
+        result.add("mainInventory", mainInventory);
+        
+        // 盔甲
+        com.google.gson.JsonArray armor = new com.google.gson.JsonArray();
+        for (int i = 0; i < player.getInventory().armor.size(); i++) {
+            net.minecraft.world.item.ItemStack stack = player.getInventory().armor.get(i);
+            armor.add(serializeItemStack(stack, i));
+        }
+        result.add("armor", armor);
+        
+        // 副手
+        com.google.gson.JsonArray offhand = new com.google.gson.JsonArray();
+        for (int i = 0; i < player.getInventory().offhand.size(); i++) {
+            net.minecraft.world.item.ItemStack stack = player.getInventory().offhand.get(i);
+            offhand.add(serializeItemStack(stack, i));
+        }
+        result.add("offhand", offhand);
+        
+        // 当前选中槽位
+        result.addProperty("selectedSlot", player.getInventory().selected);
         
         return result;
+    }
+    
+    /**
+     * 序列化物品堆
+     */
+    private JsonObject serializeItemStack(net.minecraft.world.item.ItemStack stack, int slot) {
+        JsonObject item = new JsonObject();
+        item.addProperty("slot", slot);
+        
+        if (stack.isEmpty()) {
+            item.addProperty("empty", true);
+            return item;
+        }
+        
+        item.addProperty("empty", false);
+        item.addProperty("id", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        item.addProperty("count", stack.getCount());
+        item.addProperty("maxCount", stack.getMaxStackSize());
+        item.addProperty("displayName", stack.getHoverName().getString());
+        item.addProperty("damaged", stack.isDamaged());
+        
+        if (stack.isDamageableItem()) {
+            item.addProperty("damage", stack.getDamageValue());
+            item.addProperty("maxDamage", stack.getMaxDamage());
+            item.addProperty("durabilityPercent", (stack.getMaxDamage() - stack.getDamageValue()) * 100.0 / stack.getMaxDamage());
+        }
+        
+        // 附魔
+        if (stack.isEnchanted()) {
+            com.google.gson.JsonArray enchantments = new com.google.gson.JsonArray();
+            for (var enchantmentInstance : stack.getEnchantmentTags()) {
+                if (enchantmentInstance instanceof net.minecraft.nbt.CompoundTag tag) {
+                    JsonObject ench = new JsonObject();
+                    ench.addProperty("id", tag.getString("id"));
+                    ench.addProperty("level", tag.getInt("lvl"));
+                    enchantments.add(ench);
+                }
+            }
+            item.add("enchantments", enchantments);
+        }
+        
+        // NBT 数据（简化版）
+        if (stack.hasTag()) {
+            item.addProperty("hasNbt", true);
+            // 可选：添加完整 NBT 序列化
+            // item.addProperty("nbt", stack.getTag().toString());
+        } else {
+            item.addProperty("hasNbt", false);
+        }
+        
+        return item;
     }
     
     /**

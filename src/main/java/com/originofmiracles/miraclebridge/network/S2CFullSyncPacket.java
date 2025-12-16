@@ -1,6 +1,11 @@
 package com.originofmiracles.miraclebridge.network;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
+import com.originofmiracles.miraclebridge.bridge.BridgeAPI;
+import com.originofmiracles.miraclebridge.browser.BrowserManager;
+import com.originofmiracles.miraclebridge.browser.MiracleBrowser;
 import com.originofmiracles.miraclebridge.config.ClientConfig;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
@@ -86,6 +91,7 @@ public class S2CFullSyncPacket {
             case "entity_state" -> handleEntityStateSync();
             case "game_event" -> handleGameEventSync();
             case "browser_command" -> handleBrowserCommandSync();
+            case "bridge_response" -> handleBridgeResponse();
             default -> {
                 if (ClientConfig.isDebugEnabled()) {
                     LOGGER.warn("未知的同步数据类型: {}", dataType);
@@ -98,10 +104,20 @@ public class S2CFullSyncPacket {
      * 处理实体状态同步
      */
     private void handleEntityStateSync() {
-        // TODO: 实现实体状态同步处理
-        // 解析 jsonData 并更新本地实体状态
         if (ClientConfig.isDebugEnabled()) {
             LOGGER.debug("实体状态同步: {}", jsonData);
+        }
+        
+        // 解析实体状态数据
+        try {
+            Gson gson = new Gson();
+            JsonObject data = gson.fromJson(jsonData, JsonObject.class);
+            
+            // 推送到所有浏览器
+            pushEventToAllBrowsers("entity:stateUpdate", data);
+            
+        } catch (Exception e) {
+            LOGGER.error("解析实体状态数据失败", e);
         }
     }
     
@@ -109,10 +125,23 @@ public class S2CFullSyncPacket {
      * 处理游戏事件同步
      */
     private void handleGameEventSync() {
-        // TODO: 实现游戏事件同步处理
-        // 触发相应的客户端事件
         if (ClientConfig.isDebugEnabled()) {
             LOGGER.debug("游戏事件同步: {}", jsonData);
+        }
+        
+        // 解析游戏事件数据
+        try {
+            Gson gson = new Gson();
+            JsonObject data = gson.fromJson(jsonData, JsonObject.class);
+            
+            // 获取事件名称
+            String eventName = data.has("eventName") ? data.get("eventName").getAsString() : "unknown";
+            
+            // 推送到所有浏览器
+            pushEventToAllBrowsers("game:" + eventName, data);
+            
+        } catch (Exception e) {
+            LOGGER.error("解析游戏事件数据失败", e);
         }
     }
     
@@ -120,10 +149,85 @@ public class S2CFullSyncPacket {
      * 处理浏览器命令同步
      */
     private void handleBrowserCommandSync() {
-        // TODO: 实现浏览器命令同步处理
-        // 将命令转发给 BrowserManager
         if (ClientConfig.isDebugEnabled()) {
             LOGGER.debug("浏览器命令同步: {}", jsonData);
+        }
+        
+        // 解析浏览器命令
+        try {
+            Gson gson = new Gson();
+            JsonObject data = gson.fromJson(jsonData, JsonObject.class);
+            
+            String command = data.has("command") ? data.get("command").getAsString() : "";
+            String browserName = data.has("browser") ? data.get("browser").getAsString() : "main";
+            
+            MiracleBrowser browser = BrowserManager.getInstance().getBrowser(browserName);
+            if (browser == null) {
+                LOGGER.warn("浏览器不存在: {}", browserName);
+                return;
+            }
+            
+            switch (command) {
+                case "navigate" -> {
+                    String url = data.has("url") ? data.get("url").getAsString() : "";
+                    if (!url.isEmpty()) {
+                        browser.loadUrl(url);
+                    }
+                }
+                case "executeJs" -> {
+                    String script = data.has("script") ? data.get("script").getAsString() : "";
+                    if (!script.isEmpty()) {
+                        browser.executeJavaScript(script);
+                    }
+                }
+                case "resize" -> {
+                    int width = data.has("width") ? data.get("width").getAsInt() : 0;
+                    int height = data.has("height") ? data.get("height").getAsInt() : 0;
+                    if (width > 0 && height > 0) {
+                        browser.resize(width, height);
+                    }
+                }
+                case "close" -> BrowserManager.getInstance().closeBrowser(browserName);
+                default -> LOGGER.warn("未知的浏览器命令: {}", command);
+            }
+            
+        } catch (Exception e) {
+            LOGGER.error("解析浏览器命令失败", e);
+        }
+    }
+    
+    /**
+     * 处理桥接响应
+     */
+    private void handleBridgeResponse() {
+        if (ClientConfig.isDebugEnabled()) {
+            LOGGER.debug("桥接响应: {}", jsonData);
+        }
+        
+        // 查找所有浏览器并传递响应
+        for (String browserName : BrowserManager.getInstance().getBrowserNames()) {
+            MiracleBrowser browser = BrowserManager.getInstance().getBrowser(browserName);
+            if (browser != null) {
+                BridgeAPI bridgeAPI = browser.getBridgeAPI();
+                if (bridgeAPI != null) {
+                    bridgeAPI.handleServerResponse(jsonData);
+                }
+            }
+        }
+    }
+    
+    /**
+     * 向所有浏览器推送事件
+     */
+    private void pushEventToAllBrowsers(String eventName, JsonObject data) {
+        for (String browserName : BrowserManager.getInstance().getBrowserNames()) {
+            MiracleBrowser browser = BrowserManager.getInstance().getBrowser(browserName);
+            if (browser != null && browser.isReady()) {
+                BridgeAPI bridgeAPI = browser.getBridgeAPI();
+                if (bridgeAPI != null) {
+                    bridgeAPI.pushEvent(eventName, data);
+                }
+            }
         }
     }
     
