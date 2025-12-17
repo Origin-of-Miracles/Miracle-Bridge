@@ -139,17 +139,17 @@ public class YSMEntityDriver implements IEntityDriver {
             
             // 检测是否需要跳跃（前方有障碍）
             BlockPos frontPos = new BlockPos((int) newX, (int) newY, (int) newZ);
-            if (player.level().getBlockState(frontPos).isSolid()) {
+            if (player.level().getBlockState(frontPos).canOcclude()) {
                 // 尝试跳跃
                 BlockPos aboveFront = frontPos.above();
-                if (!player.level().getBlockState(aboveFront).isSolid()) {
+                if (!player.level().getBlockState(aboveFront).canOcclude()) {
                     newY += 1.0;
                 }
             }
             
             // 检测脚下是否有地面
             BlockPos belowPos = new BlockPos((int) newX, (int) (newY - 1), (int) newZ);
-            if (!player.level().getBlockState(belowPos).isSolid()) {
+            if (!player.level().getBlockState(belowPos).canOcclude()) {
                 // 下落
                 newY -= 0.5;
             }

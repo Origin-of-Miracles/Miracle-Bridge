@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 
 import com.cinemamod.mcef.MCEF;
 import com.cinemamod.mcef.MCEFBrowser;
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
@@ -142,16 +141,20 @@ public class MiracleBrowser {
         if (browser == null) return;
         
         int textureId = getTextureId();
-        if (textureId == -1) return;
+        // 纹理ID必须大于0（0表示无效纹理，-1表示浏览器未就绪）
+        if (textureId <= 0) return;
         
-        RenderSystem.setShaderTexture(0, textureId);
-        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        // 设置渲染状态
         RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        RenderSystem.setShaderTexture(0, textureId);
         
+        // 构建四边形顶点
         BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
         bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
         
+        // 顶点顺序：左下 -> 右下 -> 右上 -> 左上（顺时针）
         bufferBuilder.vertex(x, y + renderHeight, 0).uv(0f, 1f).color(255, 255, 255, 255).endVertex();
         bufferBuilder.vertex(x + renderWidth, y + renderHeight, 0).uv(1f, 1f).color(255, 255, 255, 255).endVertex();
         bufferBuilder.vertex(x + renderWidth, y, 0).uv(1f, 0f).color(255, 255, 255, 255).endVertex();

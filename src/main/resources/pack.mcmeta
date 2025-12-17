@@ -1,1 +1,6 @@
-pack.description=Miracle Bridge 资源包
+{
+    "pack": {
+        "description": "Miracle Bridge 资源包 - 连接现实与奇迹",
+        "pack_format": 15
+    }
+}

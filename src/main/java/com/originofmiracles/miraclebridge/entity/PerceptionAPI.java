@@ -5,8 +5,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -89,8 +89,8 @@ public class PerceptionAPI {
                     block.addProperty("x", pos.getX());
                     block.addProperty("y", pos.getY());
                     block.addProperty("z", pos.getZ());
-                    block.addProperty("id", BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
-                    block.addProperty("solid", state.isSolid());
+                    block.addProperty("id", ForgeRegistries.BLOCKS.getKey(state.getBlock()).toString());
+                    block.addProperty("solid", state.canOcclude());
                     block.addProperty("distance", Math.sqrt(x*x + y*y + z*z));
                     
                     blocks.add(block);
@@ -129,7 +129,7 @@ public class PerceptionAPI {
             result.addProperty("x", pos.getX());
             result.addProperty("y", pos.getY());
             result.addProperty("z", pos.getZ());
-            result.addProperty("id", BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+            result.addProperty("id", ForgeRegistries.BLOCKS.getKey(state.getBlock()).toString());
             result.addProperty("distance", hit.getLocation().distanceTo(eyePos));
             
             return result;
@@ -169,7 +169,7 @@ public class PerceptionAPI {
             JsonObject entityJson = new JsonObject();
             entityJson.addProperty("id", entity.getId());
             entityJson.addProperty("uuid", entity.getUUID().toString());
-            entityJson.addProperty("type", BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
+            entityJson.addProperty("type", ForgeRegistries.ENTITY_TYPES.getKey(entity.getType()).toString());
             entityJson.addProperty("x", entity.getX());
             entityJson.addProperty("y", entity.getY());
             entityJson.addProperty("z", entity.getZ());

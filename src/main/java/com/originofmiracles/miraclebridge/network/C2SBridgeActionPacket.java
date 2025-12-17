@@ -232,7 +232,7 @@ public class C2SBridgeActionPacket {
         }
         
         item.addProperty("empty", false);
-        item.addProperty("id", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        item.addProperty("id", net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()).toString());
         item.addProperty("count", stack.getCount());
         item.addProperty("maxCount", stack.getMaxStackSize());
         item.addProperty("displayName", stack.getHoverName().getString());

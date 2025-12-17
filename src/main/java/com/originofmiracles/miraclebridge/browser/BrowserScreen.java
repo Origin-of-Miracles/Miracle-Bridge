@@ -1,5 +1,6 @@
 package com.originofmiracles.miraclebridge.browser;
 import com.mojang.logging.LogUtils;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -30,6 +31,12 @@ public class BrowserScreen extends Screen {
      * 输入处理器
      */
     private final InputHandler inputHandler;
+    
+    /**
+     * 实际像素尺寸（考虑 GUI scale）
+     */
+    private int actualWidth;
+    private int actualHeight;
     
     /**
      * 创建浏览器界面
@@ -64,24 +71,36 @@ public class BrowserScreen extends Screen {
     protected void init() {
         super.init();
         
+        // 获取实际像素尺寸（窗口分辨率，不受 GUI scale 影响）
+        Minecraft mc = Minecraft.getInstance();
+        actualWidth = mc.getWindow().getWidth();
+        actualHeight = mc.getWindow().getHeight();
+        
         if (browser != null) {
-            // 调整浏览器尺寸以匹配屏幕
-            browser.resize(width, height);
-            LOGGER.debug("浏览器界面已初始化: {}x{}", width, height);
+            // 使用实际像素尺寸调整浏览器，避免模糊
+            browser.resize(actualWidth, actualHeight);
+            LOGGER.debug("浏览器界面已初始化: GUI={}x{}, 实际像素={}x{}", width, height, actualWidth, actualHeight);
         }
     }
     
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // 渲染黑色背景
-        renderBackground(guiGraphics);
+        // 使用纯黑色填充背景，不使用 renderBackground 避免灰色遮罩
+        guiGraphics.fill(0, 0, width, height, 0xFF000000);
         
         // 渲染浏览器
         if (browser != null && browser.isReady()) {
-            browser.render(0, 0, width, height);
+            // 检查纹理ID是否有效
+            int textureId = browser.getTextureId();
+            if (textureId > 0) {
+                browser.render(0, 0, width, height);
+            } else {
+                guiGraphics.drawCenteredString(font, "Browser texture not ready (ID: " + textureId + ")...", width / 2, height / 2, 0xFFFF00);
+            }
         } else {
             // 浏览器未就绪时显示加载信息
-            guiGraphics.drawCenteredString(font, "Loading browser...", width / 2, height / 2, 0xFFFFFF);
+            String status = browser == null ? "Browser is null" : "Browser not ready";
+            guiGraphics.drawCenteredString(font, "Loading browser... (" + status + ")", width / 2, height / 2, 0xFFFFFF);
         }
         
         super.render(guiGraphics, mouseX, mouseY, partialTick);
@@ -95,12 +114,23 @@ public class BrowserScreen extends Screen {
     
     // ==================== 鼠标事件 ====================
     
+    /**
+     * 将 GUI 坐标转换为浏览器像素坐标
+     * GUI 坐标受 GUI scale 影响，需要转换为实际像素
+     */
+    private int toActualX(double guiX) {
+        // 浏览器使用实际像素尺寸，鼠标坐标也需要转换
+        return (int) (guiX * actualWidth / width);
+    }
+    
+    private int toActualY(double guiY) {
+        return (int) (guiY * actualHeight / height);
+    }
+    
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (browser != null) {
-            int x = inputHandler.scaleX(mouseX, width, browser.getWidth());
-            int y = inputHandler.scaleY(mouseY, height, browser.getHeight());
-            browser.sendMousePress(x, y, button);
+            browser.sendMousePress(toActualX(mouseX), toActualY(mouseY), button);
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -109,9 +139,7 @@ public class BrowserScreen extends Screen {
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (browser != null) {
-            int x = inputHandler.scaleX(mouseX, width, browser.getWidth());
-            int y = inputHandler.scaleY(mouseY, height, browser.getHeight());
-            browser.sendMouseRelease(x, y, button);
+            browser.sendMouseRelease(toActualX(mouseX), toActualY(mouseY), button);
             return true;
         }
         return super.mouseReleased(mouseX, mouseY, button);
@@ -120,9 +148,7 @@ public class BrowserScreen extends Screen {
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
         if (browser != null) {
-            int x = inputHandler.scaleX(mouseX, width, browser.getWidth());
-            int y = inputHandler.scaleY(mouseY, height, browser.getHeight());
-            browser.sendMouseMove(x, y);
+            browser.sendMouseMove(toActualX(mouseX), toActualY(mouseY));
         }
         super.mouseMoved(mouseX, mouseY);
     }
@@ -130,9 +156,7 @@ public class BrowserScreen extends Screen {
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (browser != null) {
-            int x = inputHandler.scaleX(mouseX, width, browser.getWidth());
-            int y = inputHandler.scaleY(mouseY, height, browser.getHeight());
-            browser.sendMouseMove(x, y);
+            browser.sendMouseMove(toActualX(mouseX), toActualY(mouseY));
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
@@ -141,10 +165,9 @@ public class BrowserScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (browser != null) {
-            int x = inputHandler.scaleX(mouseX, width, browser.getWidth());
-            int y = inputHandler.scaleY(mouseY, height, browser.getHeight());
-            int scrollDelta = (int) (delta * 120); // CEF 使用的滚轮单位
-            browser.sendMouseWheel(x, y, scrollDelta, inputHandler.getCurrentModifiers());
+            // 使用配置的滚轮灵敏度系数（默认 40，原来是 120 太快了）
+            int scrollDelta = (int) (delta * com.originofmiracles.miraclebridge.config.ClientConfig.getScrollSensitivity());
+            browser.sendMouseWheel(toActualX(mouseX), toActualY(mouseY), scrollDelta, inputHandler.getCurrentModifiers());
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, delta);

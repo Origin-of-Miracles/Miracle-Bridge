@@ -1,8 +1,12 @@
 package com.originofmiracles.miraclebridge.browser;
 
+import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.logging.LogUtils;
 import com.originofmiracles.miraclebridge.MiracleBridge;
+
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -12,8 +16,6 @@ import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.lwjgl.glfw.GLFW;
-import org.slf4j.Logger;
 
 /**
  * 快捷键注册和处理
@@ -193,16 +195,38 @@ public class KeyBindings {
                 return;
             }
             
-            // 获取或创建主浏览器
-            MiracleBrowser browser = BrowserManager.getInstance().getBrowser("main");
+            BrowserManager manager = BrowserManager.getInstance();
+            MiracleBrowser browser = null;
+            String browserName = null;
+            
+            // 优先使用当前选中的浏览器
+            browserName = manager.getCurrentBrowserName();
+            if (browserName != null) {
+                browser = manager.getBrowser(browserName);
+            }
+            
+            // 如果没有选中的，尝试获取列表中的第一个
+            if (browser == null) {
+                var names = manager.getBrowserNames();
+                if (!names.isEmpty()) {
+                    browserName = names.get(0);
+                    browser = manager.getBrowser(browserName);
+                    manager.selectBrowser(browserName);
+                    LOGGER.info("自动选择浏览器: {}", browserName);
+                }
+            }
+            
+            // 如果没有任何浏览器，创建新的 main
             if (browser == null) {
                 LOGGER.info("创建新浏览器实例...");
-                browser = BrowserManager.getInstance().createBrowser("main", null);
+                browser = manager.createBrowser(BrowserManager.DEFAULT_BROWSER_NAME, null);
+                browserName = BrowserManager.DEFAULT_BROWSER_NAME;
             }
             
             if (browser != null) {
-                mc.setScreen(new BrowserScreen("main", browser, true));
-                LOGGER.info("全屏浏览器已打开");
+                mc.setScreen(new BrowserScreen(browserName, browser, true));
+                LOGGER.info("全屏浏览器已打开: {}", browserName);
+                sendPlayerMessage(mc, "§a打开浏览器: " + browserName);
             } else {
                 LOGGER.error("无法创建浏览器实例");
                 sendPlayerMessage(mc, "§c无法创建浏览器，请检查日志");

@@ -3,6 +3,7 @@ package com.originofmiracles.miraclebridge.command;
 import org.slf4j.Logger;
 
 import com.cinemamod.mcef.MCEF;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.logging.LogUtils;
@@ -13,7 +14,6 @@ import com.originofmiracles.miraclebridge.config.ClientConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.MessageArgument;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -24,6 +24,7 @@ import net.minecraft.network.chat.Component;
  * - /miraclebridge mcef create <name> [url] - 创建浏览器实例
  * - /miraclebridge mcef close <name> - 关闭浏览器实例
  * - /miraclebridge mcef list - 列出所有浏览器实例
+ * - /miraclebridge mcef select <name> - 选择当前使用的浏览器
  * - /miraclebridge mcef js <name> <code> - 执行 JavaScript 代码
  */
 public class MCEFCommands {
@@ -35,18 +36,21 @@ public class MCEFCommands {
             .then(Commands.literal("status")
                 .executes(MCEFCommands::checkStatus))
             .then(Commands.literal("create")
-                .then(Commands.argument("name", MessageArgument.message())
+                .then(Commands.argument("name", StringArgumentType.word())
                     .executes(ctx -> createBrowser(ctx, null))
-                    .then(Commands.argument("url", MessageArgument.message())
-                        .executes(ctx -> createBrowser(ctx, MessageArgument.getMessage(ctx, "url").getString())))))
+                    .then(Commands.argument("url", StringArgumentType.greedyString())
+                        .executes(ctx -> createBrowser(ctx, StringArgumentType.getString(ctx, "url"))))))
             .then(Commands.literal("close")
-                .then(Commands.argument("name", MessageArgument.message())
+                .then(Commands.argument("name", StringArgumentType.word())
                     .executes(MCEFCommands::closeBrowser)))
             .then(Commands.literal("list")
                 .executes(MCEFCommands::listBrowsers))
+            .then(Commands.literal("select")
+                .then(Commands.argument("name", StringArgumentType.word())
+                    .executes(MCEFCommands::selectBrowser)))
             .then(Commands.literal("js")
-                .then(Commands.argument("name", MessageArgument.message())
-                    .then(Commands.argument("code", MessageArgument.message())
+                .then(Commands.argument("name", StringArgumentType.word())
+                    .then(Commands.argument("code", StringArgumentType.greedyString())
                         .executes(MCEFCommands::executeJS))));
     }
     
@@ -102,7 +106,7 @@ public class MCEFCommands {
         CommandSourceStack source = ctx.getSource();
         
         try {
-            String name = MessageArgument.getMessage(ctx, "name").getString();
+            String name = StringArgumentType.getString(ctx, "name");
             
             if (!MCEF.isInitialized()) {
                 source.sendFailure(Component.literal("MCEF 未初始化，无法创建浏览器"));
@@ -143,7 +147,7 @@ public class MCEFCommands {
         CommandSourceStack source = ctx.getSource();
         
         try {
-            String name = MessageArgument.getMessage(ctx, "name").getString();
+            String name = StringArgumentType.getString(ctx, "name");
             
             if (!BrowserManager.getInstance().hasBrowser(name)) {
                 source.sendFailure(Component.literal("浏览器 '" + name + "' 不存在"));
@@ -165,22 +169,70 @@ public class MCEFCommands {
      */
     private static int listBrowsers(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
+        BrowserManager manager = BrowserManager.getInstance();
         
-        var names = BrowserManager.getInstance().getBrowserNames();
+        var names = manager.getBrowserNames();
+        String currentName = manager.getCurrentBrowserName();
         
         if (names.isEmpty()) {
             source.sendSuccess(() -> Component.literal("当前没有活跃的浏览器实例").withStyle(ChatFormatting.YELLOW), false);
+            source.sendSuccess(() -> Component.literal("使用 /mb mcef create <名称> <URL> 创建浏览器").withStyle(ChatFormatting.GRAY), false);
             return 1;
         }
         
-        source.sendSuccess(() -> Component.literal("活跃的浏览器实例 (" + names.size() + "):").withStyle(ChatFormatting.GOLD), false);
+        source.sendSuccess(() -> Component.literal("═══ 浏览器列表 (" + names.size() + ") ═══").withStyle(ChatFormatting.GOLD), false);
+        
+        int index = 1;
         for (String name : names) {
-            MiracleBrowser browser = BrowserManager.getInstance().getBrowser(name);
-            String info = browser != null ? " (纹理ID: " + browser.getTextureId() + ")" : "";
-            source.sendSuccess(() -> Component.literal("  - " + name + info).withStyle(ChatFormatting.GREEN), false);
+            MiracleBrowser browser = manager.getBrowser(name);
+            boolean isCurrent = name.equals(currentName);
+            boolean isDefault = BrowserManager.DEFAULT_BROWSER_NAME.equals(name);
+            
+            String prefix = isCurrent ? "▶ " : "  ";
+            String suffix = "";
+            if (isDefault) suffix += " [默认]";
+            if (isCurrent) suffix += " [当前]";
+            
+            String info = browser != null ? " (纹理ID: " + browser.getTextureId() + ")" : " (未就绪)";
+            
+            final String displayName = prefix + index + ". " + name + suffix + info;
+            ChatFormatting color = isCurrent ? ChatFormatting.GREEN : (isDefault ? ChatFormatting.AQUA : ChatFormatting.WHITE);
+            
+            source.sendSuccess(() -> Component.literal(displayName).withStyle(color), false);
+            index++;
         }
         
+        source.sendSuccess(() -> Component.literal("").withStyle(ChatFormatting.WHITE), false);
+        source.sendSuccess(() -> Component.literal("使用 /mb mcef select <名称> 选择浏览器").withStyle(ChatFormatting.GRAY), false);
+        
         return 1;
+    }
+    
+    /**
+     * 选择当前使用的浏览器
+     */
+    private static int selectBrowser(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack source = ctx.getSource();
+        
+        try {
+            String name = StringArgumentType.getString(ctx, "name");
+            BrowserManager manager = BrowserManager.getInstance();
+            
+            if (!manager.hasBrowser(name)) {
+                source.sendFailure(Component.literal("浏览器 '" + name + "' 不存在"));
+                source.sendSuccess(() -> Component.literal("使用 /mb mcef list 查看可用浏览器").withStyle(ChatFormatting.GRAY), false);
+                return 0;
+            }
+            
+            manager.selectBrowser(name);
+            source.sendSuccess(() -> Component.literal("✓ 已选择浏览器: " + name).withStyle(ChatFormatting.GREEN), false);
+            source.sendSuccess(() -> Component.literal("按 B 键打开此浏览器").withStyle(ChatFormatting.GRAY), false);
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("选择浏览器时发生错误", e);
+            source.sendFailure(Component.literal("错误: " + e.getMessage()));
+            return 0;
+        }
     }
     
     /**
@@ -190,8 +242,8 @@ public class MCEFCommands {
         CommandSourceStack source = ctx.getSource();
         
         try {
-            String name = MessageArgument.getMessage(ctx, "name").getString();
-            String code = MessageArgument.getMessage(ctx, "code").getString();
+            String name = StringArgumentType.getString(ctx, "name");
+            String code = StringArgumentType.getString(ctx, "code");
             
             MiracleBrowser browser = BrowserManager.getInstance().getBrowser(name);
             if (browser == null) {

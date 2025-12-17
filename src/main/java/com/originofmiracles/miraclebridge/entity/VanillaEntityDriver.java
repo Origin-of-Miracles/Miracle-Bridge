@@ -155,16 +155,16 @@ public class VanillaEntityDriver implements IEntityDriver {
             
             // 简单的障碍检测
             BlockPos frontPos = new BlockPos((int) newX, (int) newY, (int) newZ);
-            if (player.level().getBlockState(frontPos).isSolid()) {
+            if (player.level().getBlockState(frontPos).canOcclude()) {
                 BlockPos above = frontPos.above();
-                if (!player.level().getBlockState(above).isSolid()) {
+                if (!player.level().getBlockState(above).canOcclude()) {
                     newY += 1.0;
                 }
             }
             
             // 下落检测
             BlockPos below = new BlockPos((int) newX, (int) (newY - 1), (int) newZ);
-            if (!player.level().getBlockState(below).isSolid()) {
+            if (!player.level().getBlockState(below).canOcclude()) {
                 newY -= 0.5;
             }
             

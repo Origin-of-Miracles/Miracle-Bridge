@@ -7,7 +7,6 @@ import com.originofmiracles.miraclebridge.browser.MiracleBrowser;
 import com.originofmiracles.miraclebridge.bridge.BridgeAPI;
 import com.originofmiracles.miraclebridge.network.ModNetworkHandler;
 import com.originofmiracles.miraclebridge.network.S2CEventPushPacket;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -19,6 +18,7 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
 /**
@@ -133,7 +133,7 @@ public class ForgeEventBridge {
             data.addProperty("deathSource", event.getSource().type().msgId());
             Entity killer = event.getSource().getEntity();
             if (killer != null) {
-                data.addProperty("killerType", BuiltInRegistries.ENTITY_TYPE.getKey(killer.getType()).toString());
+                data.addProperty("killerType", ForgeRegistries.ENTITY_TYPES.getKey(killer.getType()).toString());
                 if (killer instanceof Player killerPlayer) {
                     data.addProperty("killerName", killerPlayer.getName().getString());
                 }
@@ -189,7 +189,7 @@ public class ForgeEventBridge {
             data.addProperty("deathSource", event.getSource().type().msgId());
             Entity killer = event.getSource().getEntity();
             if (killer != null) {
-                data.addProperty("killerType", BuiltInRegistries.ENTITY_TYPE.getKey(killer.getType()).toString());
+                data.addProperty("killerType", ForgeRegistries.ENTITY_TYPES.getKey(killer.getType()).toString());
                 if (killer instanceof Player killerPlayer) {
                     data.addProperty("killerName", killerPlayer.getName().getString());
                 }
@@ -230,7 +230,7 @@ public class ForgeEventBridge {
         JsonObject data = new JsonObject();
         data.addProperty("entityId", entity.getId());
         data.addProperty("uuid", entity.getUUID().toString());
-        data.addProperty("type", BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
+        data.addProperty("type", ForgeRegistries.ENTITY_TYPES.getKey(entity.getType()).toString());
         data.addProperty("x", entity.getX());
         data.addProperty("y", entity.getY());
         data.addProperty("z", entity.getZ());

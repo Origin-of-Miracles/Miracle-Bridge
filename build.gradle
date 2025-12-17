@@ -99,6 +99,11 @@ tasks.named('jar', Jar).configure {
     finalizedBy 'reobfJar'
 }
 
+// 编译器设置 - 显示详细警告信息
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-Xlint:deprecation', '-Xlint:unchecked']
+}
+
 publishing {
     publications {
         register('mavenJava', MavenPublication) {

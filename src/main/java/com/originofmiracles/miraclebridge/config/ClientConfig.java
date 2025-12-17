@@ -35,6 +35,13 @@ public class ClientConfig {
      */
     public static final ForgeConfigSpec.ConfigValue<String> BROWSER_DEV_SERVER_URL;
     
+    // ==================== Input 配置 ====================
+    
+    /**
+     * [HOT] 滚轮灵敏度系数
+     */
+    public static final ForgeConfigSpec.IntValue SCROLL_SENSITIVITY;
+    
     // ==================== Debug 配置 ====================
     
     /**
@@ -79,6 +86,16 @@ public class ClientConfig {
         
         builder.pop();
         
+        // ==================== Input 配置 ====================
+        builder.comment("输入相关配置")
+               .push("input");
+        
+        SCROLL_SENSITIVITY = builder
+                .comment("[HOT] 滚轮灵敏度系数，默认 40，数值越大滚动越快")
+                .defineInRange("scrollSensitivity", 40, 10, 200);
+        
+        builder.pop();
+        
         // ==================== Debug 配置 ====================
         builder.comment("调试相关配置")
                .push("debug");
@@ -119,6 +136,13 @@ public class ClientConfig {
      */
     public static String getDevServerUrl() {
         return BROWSER_DEV_SERVER_URL.get();
+    }
+    
+    /**
+     * 获取滚轮灵敏度系数
+     */
+    public static int getScrollSensitivity() {
+        return SCROLL_SENSITIVITY.get();
     }
     
     /**
