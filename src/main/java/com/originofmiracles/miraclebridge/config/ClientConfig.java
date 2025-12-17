@@ -91,8 +91,8 @@ public class ClientConfig {
                .push("input");
         
         SCROLL_SENSITIVITY = builder
-                .comment("[HOT] 滚轮灵敏度系数，默认 40，数值越大滚动越快")
-                .defineInRange("scrollSensitivity", 40, 10, 200);
+                .comment("[HOT] 滚轮灵敏度系数，默认 1，数值越大滚动越快")
+                .defineInRange("scrollSensitivity", 1, 1, 50);
         
         builder.pop();
         
