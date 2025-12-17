@@ -26,29 +26,21 @@ Miracle Bridge 不是一个玩法模组——它是连接 Minecraft Java 引擎�
 - **Forge 47.2.0+**
 - **网络连接**（仅首次启动，用于 MCEF 设置）
 
-### 安装
-
-1. 从 [Releases](https://github.com/Origin-of-Miracles/Miracle-Bridge/releases) 下载最新版本
-2. 将 \`miraclebridge-x.x.x.jar\` 放入 \`mods/\` 文件夹
-3. 使用 Forge 启动 Minecraft
-4. MCEF 会在首次运行时自动下载（约 200MB）
-
-### 开发者指南
-
-查看 [DEVELOPMENT.md](DEVELOPMENT.md) 了解设置说明。
+### 开发环境设置
 
 ```bash
 ./gradlew setupDecompWorkspace
 ./gradlew genIntellijRuns
 ./gradlew runClient
-```  
-## 🖥️ 平台支持
+```
+
+## 平台支持
 
 | 平台 | MCEF (浏览器) | YSM (动画) |
-|----------|----------------|------------------|
-| **Windows 10/11** (x64, ARM64) | ✅ | ✅ |
-| **Linux** glibc 2.31+ (x64, ARM64) | ✅ | ✅ |
-| **macOS** 11+ (Intel, Apple Silicon) | ✅ | ❌ 不支持* |
+|------|---------------|------------|
+| Windows 10/11 | 支持 | 支持 |
+| Linux glibc 2.31+ | 支持 | 支持 |
+| macOS 11+ | 支持 | 不支持* |
 
 *YSM 使用与 macOS 不兼容的 C++ 原生库。功能将优雅降级。
 
@@ -80,7 +72,6 @@ Miracle Bridge 不是一个玩法模组——它是连接 Minecraft Java 引擎�
 ## 文档
 
 - **[开发指南](../Docs/docs/dev/miracle_bridge_dev_guide.md)** - 完整技术文档
-- **[API 参考](DEVELOPMENT.md#项目结构)** - Java & JavaScript API 文档
 - **[贡献指南](CONTRIBUTING.md)** - 如何贡献
 
 ## API 示例
@@ -140,10 +131,6 @@ driver.lookAt(new BlockPos(100, 64, 200));
 
 我们欢迎贡献！请先阅读我们的[贡献指南](CONTRIBUTING.md)。
 
-### 开发交流
-
-加入我们的 [Discord 服务器](https://discord.gg/originofmiracles) 参与讨论。
-
 ## 致谢
 
 - **CinemaMod 团队** - MCEF 及持续维护
@@ -154,8 +141,7 @@ driver.lookAt(new BlockPos(100, 64, 200));
 ## 相关项目
 
 - **[Origin of Miracles 文档](../Docs)** - 项目文档
-- **Shittim OS** - 游戏内操作系统界面（即将推出）
-- **MomoTalk** - 学生通讯系统（即将推出）
+- **[Shittim OS](../Shittim-OS)** - 游戏内操作系统界面
 
 ---
 
