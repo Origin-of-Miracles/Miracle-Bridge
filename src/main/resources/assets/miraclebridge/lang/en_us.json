@@ -1,0 +1,23 @@
+{
+    "key.categories.miraclebridge": "Miracle Bridge",
+    
+    "key.miraclebridge.toggle_browser": "Toggle Browser Screen",
+    "key.miraclebridge.dev_tools": "Developer Tools (DevTools)",
+    "key.miraclebridge.bridge_panel": "Bridge Control Panel (Ctrl+)",
+    "key.miraclebridge.toggle_overlay": "Toggle Browser Overlay",
+    "key.miraclebridge.refresh_browser": "Refresh Current Browser",
+    
+    "screen.miraclebridge.browser": "Miracle Bridge Browser",
+    "screen.miraclebridge.browser.loading": "Loading browser...",
+    "screen.miraclebridge.browser.error": "Browser failed to load",
+    
+    "message.miraclebridge.browser.created": "Browser created: %s",
+    "message.miraclebridge.browser.closed": "Browser closed: %s",
+    "message.miraclebridge.browser.refreshed": "Browser refreshed",
+    "message.miraclebridge.overlay.enabled": "Overlay enabled",
+    "message.miraclebridge.overlay.disabled": "Overlay disabled",
+    
+    "command.miraclebridge.test.title": "Miracle Bridge Prerequisite Mod Test",
+    "command.miraclebridge.mcef.status": "MCEF Status Check",
+    "command.miraclebridge.ysm.status": "YSM Status Check"
+}

@@ -212,6 +212,7 @@ public class YSMEntityDriver implements IEntityDriver {
     /**
      * 检查是否正在导航
      */
+    @Override
     public boolean isNavigating() {
         return isNavigating;
     }
@@ -219,6 +220,7 @@ public class YSMEntityDriver implements IEntityDriver {
     /**
      * 获取当前导航目标
      */
+    @Override
     @Nullable
     public BlockPos getNavigationTarget() {
         return navigationTarget;

@@ -22,7 +22,12 @@ import net.minecraftforge.fml.ModList;
 public class YSMCompat {
     
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final String YSM_MOD_ID = "ysm";
+    
+    /**
+     * YSM 的 Mod ID
+     * 注意：YSM 2.x 版本使用 "yes_steve_model" 而非 "ysm"
+     */
+    private static final String YSM_MOD_ID = "yes_steve_model";
     
     private static Boolean ysmLoaded = null;
     

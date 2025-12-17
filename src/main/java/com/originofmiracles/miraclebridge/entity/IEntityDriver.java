@@ -55,4 +55,20 @@ public interface IEntityDriver {
      * 让实体看向目标位置
      */
     void lookAt(BlockPos target);
+    
+    /**
+     * 检查实体是否正在导航
+     * @return 如果正在导航返回 true
+     */
+    default boolean isNavigating() {
+        return false;
+    }
+    
+    /**
+     * 获取当前导航目标
+     * @return 导航目标位置，如果未在导航则返回 null
+     */
+    default BlockPos getNavigationTarget() {
+        return null;
+    }
 }

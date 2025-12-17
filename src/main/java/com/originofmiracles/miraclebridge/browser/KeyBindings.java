@@ -5,6 +5,7 @@ import com.mojang.logging.LogUtils;
 import com.originofmiracles.miraclebridge.MiracleBridge;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
@@ -152,6 +153,11 @@ public class KeyBindings {
             handleDevTools();
         }
         
+        // B - 打开浏览器（无需 Ctrl）
+        else if (!ctrlDown && !shiftDown && KEY_BRIDGE_PANEL.matches(event.getKey(), event.getScanCode())) {
+            handleToggleBrowser(mc);
+        }
+        
         // Ctrl+B - Bridge 控制面板
         else if (ctrlDown && !shiftDown && KEY_BRIDGE_PANEL.matches(event.getKey(), event.getScanCode())) {
             handleBridgePanel(mc);
@@ -175,21 +181,41 @@ public class KeyBindings {
     private static void handleToggleBrowser(Minecraft mc) {
         if (mc.screen instanceof BrowserScreen) {
             mc.setScreen(null);
-            LOGGER.debug("关闭全屏浏览器");
+            LOGGER.info("关闭全屏浏览器");
+            sendPlayerMessage(mc, "§a浏览器已关闭");
         } else {
+            LOGGER.info("尝试打开全屏浏览器...");
+            
+            // 检查 MCEF 是否就绪
+            if (!com.cinemamod.mcef.MCEF.isInitialized()) {
+                LOGGER.error("MCEF 未初始化，无法打开浏览器");
+                sendPlayerMessage(mc, "§cMCEF 未初始化，请检查 MCEF mod 是否正确安装");
+                return;
+            }
+            
             // 获取或创建主浏览器
             MiracleBrowser browser = BrowserManager.getInstance().getBrowser("main");
             if (browser == null) {
-                // 创建默认浏览器
+                LOGGER.info("创建新浏览器实例...");
                 browser = BrowserManager.getInstance().createBrowser("main", null);
             }
             
             if (browser != null) {
                 mc.setScreen(new BrowserScreen("main", browser, true));
-                LOGGER.debug("打开全屏浏览器");
+                LOGGER.info("全屏浏览器已打开");
             } else {
-                LOGGER.warn("无法创建浏览器");
+                LOGGER.error("无法创建浏览器实例");
+                sendPlayerMessage(mc, "§c无法创建浏览器，请检查日志");
             }
+        }
+    }
+    
+    /**
+     * 向玩家发送消息
+     */
+    private static void sendPlayerMessage(Minecraft mc, String message) {
+        if (mc.player != null) {
+            mc.player.displayClientMessage(Component.literal(message), true);
         }
     }
     

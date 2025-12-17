@@ -1,0 +1,23 @@
+{
+    "key.categories.miraclebridge": "奇迹之桥 (Miracle Bridge)",
+    
+    "key.miraclebridge.toggle_browser": "打开/关闭浏览器 (F11)",
+    "key.miraclebridge.dev_tools": "开发者工具",
+    "key.miraclebridge.bridge_panel": "打开浏览器 / Ctrl+此键=控制面板",
+    "key.miraclebridge.toggle_overlay": "切换浏览器叠加层",
+    "key.miraclebridge.refresh_browser": "刷新浏览器",
+    
+    "screen.miraclebridge.browser": "Miracle Bridge 浏览器",
+    "screen.miraclebridge.browser.loading": "正在加载浏览器...",
+    "screen.miraclebridge.browser.error": "浏览器加载失败",
+    
+    "message.miraclebridge.browser.created": "浏览器已创建: %s",
+    "message.miraclebridge.browser.closed": "浏览器已关闭: %s",
+    "message.miraclebridge.browser.refreshed": "浏览器已刷新",
+    "message.miraclebridge.overlay.enabled": "叠加层已启用",
+    "message.miraclebridge.overlay.disabled": "叠加层已禁用",
+    
+    "command.miraclebridge.test.title": "Miracle Bridge 前置Mod功能测试",
+    "command.miraclebridge.mcef.status": "MCEF 状态检查",
+    "command.miraclebridge.ysm.status": "YSM 状态检查"
+}

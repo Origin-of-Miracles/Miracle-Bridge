@@ -228,8 +228,17 @@ public class VanillaEntityDriver implements IEntityDriver {
     /**
      * 检查是否正在导航
      */
+    @Override
     public boolean isNavigating() {
         return isNavigating;
+    }
+    
+    /**
+     * 获取当前导航目标
+     */
+    @Override
+    public BlockPos getNavigationTarget() {
+        return navigationTarget;
     }
     
     /**
