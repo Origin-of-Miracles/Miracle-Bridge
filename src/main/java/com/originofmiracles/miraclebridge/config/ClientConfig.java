@@ -31,12 +31,18 @@ public class ClientConfig {
     public static final ForgeConfigSpec.BooleanValue BROWSER_TRANSPARENT_BACKGROUND;
     
     /**
+     * [HOT] 浏览器显示比例（0.5-1.0），控制浏览器在屏幕中的显示大小
+     * 例如 0.7 表示浏览器占屏幕 70%，居中显示
+     */
+    public static final ForgeConfigSpec.DoubleValue BROWSER_DISPLAY_SCALE;
+
+    /**
      * [HOT] Vite 开发服务器地址（生产环境留空使用内置资源）
      */
     public static final ForgeConfigSpec.ConfigValue<String> BROWSER_DEV_SERVER_URL;
-    
+
     // ==================== Input 配置 ====================
-    
+
     /**
      * [HOT] 滚轮灵敏度系数
      */
@@ -78,6 +84,12 @@ public class ClientConfig {
                 .comment("[RESTART] 浏览器背景是否透明，用于叠加在游戏画面上")
                 .define("transparentBackground", true);
         
+        BROWSER_DISPLAY_SCALE = builder
+                .comment("[HOT] 浏览器显示比例（0.5-1.0）",
+                        "控制浏览器在屏幕中的显示大小比例",
+                        "例如 0.7 表示浏览器占屏幕 70%，居中显示，周围留出空白")
+                .defineInRange("displayScale", 0.7, 0.5, 1.0);
+
         BROWSER_DEV_SERVER_URL = builder
                 .comment("[HOT] Vite 开发服务器地址",
                         "开发时填写本地地址如 http://localhost:5173",
@@ -136,6 +148,13 @@ public class ClientConfig {
      */
     public static String getDevServerUrl() {
         return BROWSER_DEV_SERVER_URL.get();
+    }
+
+    /**
+     * 获取浏览器显示比例（0.5-1.0）
+     */
+    public static double getBrowserDisplayScale() {
+        return BROWSER_DISPLAY_SCALE.get();
     }
     
     /**

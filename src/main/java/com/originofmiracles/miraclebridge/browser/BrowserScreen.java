@@ -85,15 +85,25 @@ public class BrowserScreen extends Screen {
     
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // 使用纯黑色填充背景，不使用 renderBackground 避免灰色遮罩
-        guiGraphics.fill(0, 0, width, height, 0xFF000000);
+        // 不填充背景，让周围区域透明显示游戏画面
+        // 如果需要半透明黑色边框效果，可以取消下面的注释：
+        // guiGraphics.fill(0, 0, width, height, 0x80000000);
+        
+        // 获取显示比例（从配置读取，支持热重载）
+        double displayScale = com.originofmiracles.miraclebridge.config.ClientConfig.getBrowserDisplayScale();
+        
+        // 计算居中显示的位置和尺寸
+        int renderWidth = (int) (width * displayScale);
+        int renderHeight = (int) (height * displayScale);
+        int renderX = (width - renderWidth) / 2;
+        int renderY = (height - renderHeight) / 2;
         
         // 渲染浏览器
         if (browser != null && browser.isReady()) {
             // 检查纹理ID是否有效
             int textureId = browser.getTextureId();
             if (textureId > 0) {
-                browser.render(0, 0, width, height);
+                browser.render(renderX, renderY, renderWidth, renderHeight);
             } else {
                 guiGraphics.drawCenteredString(font, "Browser texture not ready (ID: " + textureId + ")...", width / 2, height / 2, 0xFFFF00);
             }
@@ -115,21 +125,72 @@ public class BrowserScreen extends Screen {
     // ==================== 鼠标事件 ====================
     
     /**
+     * 获取当前的显示比例
+     */
+    private double getDisplayScale() {
+        return com.originofmiracles.miraclebridge.config.ClientConfig.getBrowserDisplayScale();
+    }
+    
+    /**
+     * 获取浏览器渲染区域的起始 X 坐标（GUI 坐标系）
+     */
+    private int getRenderX() {
+        double displayScale = getDisplayScale();
+        int renderWidth = (int) (width * displayScale);
+        return (width - renderWidth) / 2;
+    }
+    
+    /**
+     * 获取浏览器渲染区域的起始 Y 坐标（GUI 坐标系）
+     */
+    private int getRenderY() {
+        double displayScale = getDisplayScale();
+        int renderHeight = (int) (height * displayScale);
+        return (height - renderHeight) / 2;
+    }
+    
+    /**
      * 将 GUI 坐标转换为浏览器像素坐标
-     * GUI 坐标受 GUI scale 影响，需要转换为实际像素
+     * GUI 坐标受 GUI scale 和显示比例影响，需要转换为实际像素
+     * 坐标是相对于浏览器渲染区域的，并考虑了居中显示的偏移
      */
     private int toActualX(double guiX) {
-        // 浏览器使用实际像素尺寸，鼠标坐标也需要转换
-        return (int) (guiX * actualWidth / width);
+        double displayScale = getDisplayScale();
+        int renderX = getRenderX();
+        int renderWidth = (int) (width * displayScale);
+        
+        // 将鼠标位置相对于浏览器渲染区域计算，然后映射到浏览器实际像素
+        double relativeX = guiX - renderX;
+        return (int) (relativeX * actualWidth / renderWidth);
     }
     
     private int toActualY(double guiY) {
-        return (int) (guiY * actualHeight / height);
+        double displayScale = getDisplayScale();
+        int renderY = getRenderY();
+        int renderHeight = (int) (height * displayScale);
+        
+        // 将鼠标位置相对于浏览器渲染区域计算，然后映射到浏览器实际像素
+        double relativeY = guiY - renderY;
+        return (int) (relativeY * actualHeight / renderHeight);
+    }
+    
+    /**
+     * 检查鼠标是否在浏览器渲染区域内
+     */
+    private boolean isInBrowserArea(double mouseX, double mouseY) {
+        double displayScale = getDisplayScale();
+        int renderX = getRenderX();
+        int renderY = getRenderY();
+        int renderWidth = (int) (width * displayScale);
+        int renderHeight = (int) (height * displayScale);
+        
+        return mouseX >= renderX && mouseX < renderX + renderWidth
+                && mouseY >= renderY && mouseY < renderY + renderHeight;
     }
     
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (browser != null) {
+        if (browser != null && isInBrowserArea(mouseX, mouseY)) {
             browser.sendMousePress(toActualX(mouseX), toActualY(mouseY), button);
             return true;
         }
@@ -138,7 +199,7 @@ public class BrowserScreen extends Screen {
     
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (browser != null) {
+        if (browser != null && isInBrowserArea(mouseX, mouseY)) {
             browser.sendMouseRelease(toActualX(mouseX), toActualY(mouseY), button);
             return true;
         }
@@ -147,7 +208,7 @@ public class BrowserScreen extends Screen {
     
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
-        if (browser != null) {
+        if (browser != null && isInBrowserArea(mouseX, mouseY)) {
             browser.sendMouseMove(toActualX(mouseX), toActualY(mouseY));
         }
         super.mouseMoved(mouseX, mouseY);
@@ -155,7 +216,7 @@ public class BrowserScreen extends Screen {
     
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (browser != null) {
+        if (browser != null && isInBrowserArea(mouseX, mouseY)) {
             browser.sendMouseMove(toActualX(mouseX), toActualY(mouseY));
             return true;
         }
@@ -164,7 +225,7 @@ public class BrowserScreen extends Screen {
     
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (browser != null) {
+        if (browser != null && isInBrowserArea(mouseX, mouseY)) {
             // 使用配置的滚轮灵敏度系数（默认 40，原来是 120 太快了）
             int scrollDelta = (int) (delta * com.originofmiracles.miraclebridge.config.ClientConfig.getScrollSensitivity());
             browser.sendMouseWheel(toActualX(mouseX), toActualY(mouseY), scrollDelta, inputHandler.getCurrentModifiers());
