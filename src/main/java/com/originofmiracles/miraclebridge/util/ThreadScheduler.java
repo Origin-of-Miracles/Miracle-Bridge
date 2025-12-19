@@ -1,16 +1,26 @@
 package com.originofmiracles.miraclebridge.util;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
+
+import javax.annotation.Nullable;
+
+import org.slf4j.Logger;
+
 import com.mojang.logging.LogUtils;
 import com.originofmiracles.miraclebridge.MiracleBridge;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.slf4j.Logger;
-
-import javax.annotation.Nullable;
-import java.util.concurrent.*;
-import java.util.function.Supplier;
 
 /**
  * 线程调度工具类
@@ -23,7 +33,7 @@ import java.util.function.Supplier;
  * - 服务端主线程：服务器逻辑（实体、世界）
  * - 异步线程池：网络请求、AI 推理、文件 I/O
  * 
- * ⚠️ 警告：严禁在主线程上执行阻塞操作！
+ *  警告：严禁在主线程上执行阻塞操作！
  */
 public class ThreadScheduler {
     
