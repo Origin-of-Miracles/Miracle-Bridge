@@ -165,6 +165,7 @@ public class C2SBridgeActionPacket {
     /**
      * 处理获取玩家信息请求
      */
+    @SuppressWarnings("unused")
     private JsonObject handleGetPlayerInfo(ServerPlayer player, JsonObject payload) {
         JsonObject result = new JsonObject();
         result.addProperty("success", true);
@@ -185,6 +186,7 @@ public class C2SBridgeActionPacket {
     /**
      * 处理获取背包请求
      */
+    @SuppressWarnings("unused")
     private JsonObject handleGetInventory(ServerPlayer player, JsonObject payload) {
         JsonObject result = new JsonObject();
         result.addProperty("success", true);
@@ -232,7 +234,8 @@ public class C2SBridgeActionPacket {
         }
         
         item.addProperty("empty", false);
-        item.addProperty("id", net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()).toString());
+        var itemKey = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem());
+        item.addProperty("id", itemKey != null ? itemKey.toString() : "unknown");
         item.addProperty("count", stack.getCount());
         item.addProperty("maxCount", stack.getMaxStackSize());
         item.addProperty("displayName", stack.getHoverName().getString());

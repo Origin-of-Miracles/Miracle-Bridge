@@ -127,7 +127,9 @@ public class ServerEventListener {
      */
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
         
         // 可用于定期任务
         // 例如：每 20 tick (1秒) 执行一次状态同步
@@ -138,8 +140,12 @@ public class ServerEventListener {
      */
     @SubscribeEvent
     public static void onLevelTick(TickEvent.LevelTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (event.level.isClientSide()) return;
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+        if (event.level.isClientSide()) {
+            return;
+        }
         
         // 可用于维度特定的定期任务
     }

@@ -3,7 +3,6 @@ package com.originofmiracles.miraclebridge.command;
 import com.cinemamod.mcef.MCEF;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.logging.LogUtils;
 import com.originofmiracles.miraclebridge.MiracleBridge;
 import com.originofmiracles.miraclebridge.browser.BrowserManager;
 import com.originofmiracles.miraclebridge.config.ConfigWatcher;
@@ -16,7 +15,6 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import org.slf4j.Logger;
 
 /**
  * 综合测试命令
@@ -29,8 +27,6 @@ import org.slf4j.Logger;
  * - /miraclebridge test network - 测试网络模块
  */
 public class TestCommands {
-    
-    private static final Logger LOGGER = LogUtils.getLogger();
     
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("test")

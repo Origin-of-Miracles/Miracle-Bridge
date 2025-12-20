@@ -133,7 +133,10 @@ public class ForgeEventBridge {
             data.addProperty("deathSource", event.getSource().type().msgId());
             Entity killer = event.getSource().getEntity();
             if (killer != null) {
-                data.addProperty("killerType", ForgeRegistries.ENTITY_TYPES.getKey(killer.getType()).toString());
+                var killerTypeKey = ForgeRegistries.ENTITY_TYPES.getKey(killer.getType());
+                if (killerTypeKey != null) {
+                    data.addProperty("killerType", killerTypeKey.toString());
+                }
                 if (killer instanceof Player killerPlayer) {
                     data.addProperty("killerName", killerPlayer.getName().getString());
                 }
@@ -189,7 +192,10 @@ public class ForgeEventBridge {
             data.addProperty("deathSource", event.getSource().type().msgId());
             Entity killer = event.getSource().getEntity();
             if (killer != null) {
-                data.addProperty("killerType", ForgeRegistries.ENTITY_TYPES.getKey(killer.getType()).toString());
+                var killerTypeKey = ForgeRegistries.ENTITY_TYPES.getKey(killer.getType());
+                if (killerTypeKey != null) {
+                    data.addProperty("killerType", killerTypeKey.toString());
+                }
                 if (killer instanceof Player killerPlayer) {
                     data.addProperty("killerName", killerPlayer.getName().getString());
                 }
@@ -230,7 +236,10 @@ public class ForgeEventBridge {
         JsonObject data = new JsonObject();
         data.addProperty("entityId", entity.getId());
         data.addProperty("uuid", entity.getUUID().toString());
-        data.addProperty("type", ForgeRegistries.ENTITY_TYPES.getKey(entity.getType()).toString());
+        
+        var entityTypeKey = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        data.addProperty("type", entityTypeKey != null ? entityTypeKey.toString() : "unknown");
+        
         data.addProperty("x", entity.getX());
         data.addProperty("y", entity.getY());
         data.addProperty("z", entity.getZ());
@@ -241,7 +250,7 @@ public class ForgeEventBridge {
             data.addProperty("maxHealth", living.getMaxHealth());
         }
         
-        if (entity.hasCustomName()) {
+        if (entity.hasCustomName() && entity.getCustomName() != null) {
             data.addProperty("customName", entity.getCustomName().getString());
         }
         

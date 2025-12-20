@@ -3,7 +3,6 @@ package com.originofmiracles.miraclebridge.entity;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -17,7 +16,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -36,7 +34,6 @@ import java.util.function.Predicate;
  */
 public class PerceptionAPI {
     
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
     
     private final ServerPlayer player;
@@ -85,11 +82,14 @@ public class PerceptionAPI {
                     // 应用过滤器
                     if (filter != null && !filter.test(state)) continue;
                     
+                    var blockKey = ForgeRegistries.BLOCKS.getKey(state.getBlock());
+                    if (blockKey == null) continue;
+                    
                     JsonObject block = new JsonObject();
                     block.addProperty("x", pos.getX());
                     block.addProperty("y", pos.getY());
                     block.addProperty("z", pos.getZ());
-                    block.addProperty("id", ForgeRegistries.BLOCKS.getKey(state.getBlock()).toString());
+                    block.addProperty("id", blockKey.toString());
                     block.addProperty("solid", state.canOcclude());
                     block.addProperty("distance", Math.sqrt(x*x + y*y + z*z));
                     
@@ -124,12 +124,14 @@ public class PerceptionAPI {
         if (hit.getType() == HitResult.Type.BLOCK) {
             BlockPos pos = hit.getBlockPos();
             BlockState state = level.getBlockState(pos);
+            var blockKey = ForgeRegistries.BLOCKS.getKey(state.getBlock());
+            if (blockKey == null) return null;
             
             JsonObject result = new JsonObject();
             result.addProperty("x", pos.getX());
             result.addProperty("y", pos.getY());
             result.addProperty("z", pos.getZ());
-            result.addProperty("id", ForgeRegistries.BLOCKS.getKey(state.getBlock()).toString());
+            result.addProperty("id", blockKey.toString());
             result.addProperty("distance", hit.getLocation().distanceTo(eyePos));
             
             return result;
@@ -166,10 +168,13 @@ public class PerceptionAPI {
         for (Entity entity : nearbyEntities) {
             if (filter != null && !filter.test(entity)) continue;
             
+            var entityTypeKey = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+            if (entityTypeKey == null) continue;
+            
             JsonObject entityJson = new JsonObject();
             entityJson.addProperty("id", entity.getId());
             entityJson.addProperty("uuid", entity.getUUID().toString());
-            entityJson.addProperty("type", ForgeRegistries.ENTITY_TYPES.getKey(entity.getType()).toString());
+            entityJson.addProperty("type", entityTypeKey.toString());
             entityJson.addProperty("x", entity.getX());
             entityJson.addProperty("y", entity.getY());
             entityJson.addProperty("z", entity.getZ());
