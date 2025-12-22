@@ -23,24 +23,24 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
 /**
- * 线程调度工具类
+ * Thread Scheduler Utility Class
  * 
- * 提供统一的线程切换 API，确保代码在正确的线程上执行。
+ * Provides unified thread switching API to ensure code runs on the correct thread.
  * 
- * 线程模型：
- * - 渲染线程：Webview 纹理操作、GUI 渲染
- * - 客户端主线程：游戏逻辑（玩家、物品、方块）
- * - 服务端主线程：服务器逻辑（实体、世界）
- * - 异步线程池：网络请求、AI 推理、文件 I/O
+ * Thread Model:
+ * - Render thread: Webview texture operations, GUI rendering
+ * - Client main thread: Game logic (player, items, blocks)
+ * - Server main thread: Server logic (entities, world)
+ * - Async thread pool: Network requests, AI inference, file I/O
  * 
- *  警告：严禁在主线程上执行阻塞操作！
+ * WARNING: Never execute blocking operations on main threads!
  */
 public class ThreadScheduler {
     
     private static final Logger LOGGER = LogUtils.getLogger();
     
     /**
-     * 异步任务线程池
+     * Async task thread pool
      */
     private static final ExecutorService ASYNC_EXECUTOR = Executors.newCachedThreadPool(r -> {
         Thread t = new Thread(r, MiracleBridge.MOD_ID + "-async-" + System.currentTimeMillis());
@@ -49,7 +49,7 @@ public class ThreadScheduler {
     });
     
     /**
-     * 延迟任务调度器
+     * Delayed task scheduler
      */
     private static final ScheduledExecutorService SCHEDULED_EXECUTOR = Executors.newScheduledThreadPool(2, r -> {
         Thread t = new Thread(r, MiracleBridge.MOD_ID + "-scheduled-" + System.currentTimeMillis());
@@ -57,12 +57,12 @@ public class ThreadScheduler {
         return t;
     });
     
-    // ==================== 客户端线程操作 ====================
+    // ==================== Client Thread Operations ====================
     
     /**
-     * 在客户端主线程上执行任务
+     * Execute task on client main thread
      * 
-     * @param task 要执行的任务
+     * @param task task to execute
      */
     @OnlyIn(Dist.CLIENT)
     public static void runOnClientThread(Runnable task) {
@@ -75,10 +75,10 @@ public class ThreadScheduler {
     }
     
     /**
-     * 在客户端主线程上执行任务并返回结果
+     * Execute task on client main thread and return result
      * 
-     * @param supplier 要执行的任务
-     * @return 包含结果的 CompletableFuture
+     * @param supplier task to execute
+     * @return CompletableFuture containing the result
      */
     @OnlyIn(Dist.CLIENT)
     public static <T> CompletableFuture<T> supplyOnClientThread(Supplier<T> supplier) {
@@ -97,20 +97,20 @@ public class ThreadScheduler {
     }
     
     /**
-     * 检查当前是否在客户端主线程上
+     * Check if currently on client main thread
      */
     @OnlyIn(Dist.CLIENT)
     public static boolean isOnClientThread() {
         return Minecraft.getInstance().isSameThread();
     }
     
-    // ==================== 服务端线程操作 ====================
+    // ==================== Server Thread Operations ====================
     
     /**
-     * 在服务端主线程上执行任务
+     * Execute task on server main thread
      * 
-     * @param server 服务器实例
-     * @param task 要执行的任务
+     * @param server server instance
+     * @param task task to execute
      */
     public static void runOnServerThread(MinecraftServer server, Runnable task) {
         if (server.isSameThread()) {
@@ -121,11 +121,11 @@ public class ThreadScheduler {
     }
     
     /**
-     * 在服务端主线程上执行任务并返回结果
+     * Execute task on server main thread and return result
      * 
-     * @param server 服务器实例
-     * @param supplier 要执行的任务
-     * @return 包含结果的 CompletableFuture
+     * @param server server instance
+     * @param supplier task to execute
+     * @return CompletableFuture containing the result
      */
     public static <T> CompletableFuture<T> supplyOnServerThread(MinecraftServer server, Supplier<T> supplier) {
         CompletableFuture<T> future = new CompletableFuture<>();
@@ -143,51 +143,51 @@ public class ThreadScheduler {
     }
     
     /**
-     * 检查当前是否在服务端主线程上
+     * Check if currently on server main thread
      */
     public static boolean isOnServerThread(@Nullable MinecraftServer server) {
         return server != null && server.isSameThread();
     }
     
-    // ==================== 异步操作 ====================
+    // ==================== Async Operations ====================
     
     /**
-     * 异步执行任务
+     * Execute task asynchronously
      * 
-     * @param task 要执行的任务
-     * @return 表示任务完成的 CompletableFuture
+     * @param task task to execute
+     * @return CompletableFuture representing task completion
      */
     public static CompletableFuture<Void> runAsync(Runnable task) {
         return CompletableFuture.runAsync(task, ASYNC_EXECUTOR);
     }
     
     /**
-     * 异步执行任务并返回结果
+     * Execute task asynchronously and return result
      * 
-     * @param supplier 要执行的任务
-     * @return 包含结果的 CompletableFuture
+     * @param supplier task to execute
+     * @return CompletableFuture containing the result
      */
     public static <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier) {
         return CompletableFuture.supplyAsync(supplier, ASYNC_EXECUTOR);
     }
     
     /**
-     * 延迟执行任务
+     * Execute task after delay
      * 
-     * @param task 要执行的任务
-     * @param delay 延迟时间
-     * @param unit 时间单位
-     * @return 可取消的 ScheduledFuture
+     * @param task task to execute
+     * @param delay delay time
+     * @param unit time unit
+     * @return cancelable ScheduledFuture
      */
     public static ScheduledFuture<?> runLater(Runnable task, long delay, TimeUnit unit) {
         return SCHEDULED_EXECUTOR.schedule(task, delay, unit);
     }
     
     /**
-     * 延迟在客户端主线程上执行任务
+     * Execute task on client main thread after delay
      * 
-     * @param task 要执行的任务
-     * @param delayMs 延迟时间（毫秒）
+     * @param task task to execute
+     * @param delayMs delay time (milliseconds)
      */
     @OnlyIn(Dist.CLIENT)
     public static ScheduledFuture<?> runOnClientThreadLater(Runnable task, long delayMs) {
@@ -195,24 +195,24 @@ public class ThreadScheduler {
     }
     
     /**
-     * 周期性执行任务
+     * Execute task periodically
      * 
-     * @param task 要执行的任务
-     * @param initialDelay 初始延迟
-     * @param period 执行周期
-     * @param unit 时间单位
-     * @return 可取消的 ScheduledFuture
+     * @param task task to execute
+     * @param initialDelay initial delay
+     * @param period execution period
+     * @param unit time unit
+     * @return cancelable ScheduledFuture
      */
     public static ScheduledFuture<?> runPeriodically(Runnable task, long initialDelay, long period, TimeUnit unit) {
         return SCHEDULED_EXECUTOR.scheduleAtFixedRate(task, initialDelay, period, unit);
     }
     
     /**
-     * 重复执行任务直到返回 false
+     * Execute task repeatedly until it returns false
      * 
-     * @param task 要执行的任务，返回 true 继续执行，返回 false 停止
-     * @param periodTicks 执行周期（以 tick 为单位，1 tick = 50ms）
-     * @return 可取消的 ScheduledFuture
+     * @param task task to execute, returns true to continue, false to stop
+     * @param periodTicks execution period (in ticks, 1 tick = 50ms)
+     * @return cancelable ScheduledFuture
      */
     public static ScheduledFuture<?> runRepeating(Supplier<Boolean> task, int periodTicks) {
         long periodMs = periodTicks * 50L; // 1 tick = 50ms
@@ -226,7 +226,7 @@ public class ThreadScheduler {
                     futureHolder[0].cancel(false);
                 }
             } catch (Exception e) {
-                LOGGER.error("重复任务执行出错", e);
+                LOGGER.error("Error in repeating task", e);
                 if (futureHolder[0] != null) {
                     futureHolder[0].cancel(false);
                 }
@@ -237,12 +237,12 @@ public class ThreadScheduler {
     }
     
     /**
-     * 在服务端主线程上重复执行任务
+     * Execute task repeatedly on server main thread
      * 
-     * @param server 服务器实例
-     * @param task 要执行的任务，返回 true 继续执行，返回 false 停止
-     * @param periodTicks 执行周期（以 tick 为单位）
-     * @return 可取消的 ScheduledFuture
+     * @param server server instance
+     * @param task task to execute, returns true to continue, false to stop
+     * @param periodTicks execution period (in ticks)
+     * @return cancelable ScheduledFuture
      */
     public static ScheduledFuture<?> runRepeatingOnServer(MinecraftServer server, Supplier<Boolean> task, int periodTicks) {
         return runRepeating(() -> {
@@ -250,22 +250,22 @@ public class ThreadScheduler {
             try {
                 return result.get(1, TimeUnit.SECONDS);
             } catch (Exception e) {
-                LOGGER.error("服务端重复任务执行出错", e);
+                LOGGER.error("Error in server repeating task", e);
                 return false;
             }
         }, periodTicks);
     }
     
-    // ==================== 线程安全执行 ====================
+    // ==================== Thread-Safe Execution ====================
     
     /**
-     * 确保任务在客户端主线程上执行（如果已在主线程则直接执行）
-     * 这是一个阻塞方法，会等待任务完成
+     * Ensure task runs on client main thread (runs directly if already on main thread)
+     * This is a blocking method that waits for task completion
      * 
-     * @param task 要执行的任务
-     * @param timeoutMs 超时时间（毫秒）
-     * @throws TimeoutException 如果超时
-     * @throws ExecutionException 如果任务执行出错
+     * @param task task to execute
+     * @param timeoutMs timeout (milliseconds)
+     * @throws TimeoutException if timeout
+     * @throws ExecutionException if task execution fails
      */
     @OnlyIn(Dist.CLIENT)
     public static void ensureOnClientThread(Runnable task, long timeoutMs) 
@@ -286,14 +286,14 @@ public class ThreadScheduler {
         }
     }
     
-    // ==================== 生命周期管理 ====================
+    // ==================== Lifecycle Management ====================
     
     /**
-     * 关闭所有线程池
-     * 应在模组卸载时调用
+     * Shutdown all thread pools
+     * Should be called when mod unloads
      */
     public static void shutdown() {
-        LOGGER.info("正在关闭线程调度器...");
+        LOGGER.info("Shutting down thread scheduler...");
         
         ASYNC_EXECUTOR.shutdown();
         SCHEDULED_EXECUTOR.shutdown();
@@ -311,7 +311,7 @@ public class ThreadScheduler {
             Thread.currentThread().interrupt();
         }
         
-        LOGGER.info("线程调度器已关闭");
+        LOGGER.info("Thread scheduler shut down");
     }
     
     private ThreadScheduler() {}

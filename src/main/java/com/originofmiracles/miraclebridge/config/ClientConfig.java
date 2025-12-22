@@ -41,6 +41,13 @@ public class ClientConfig {
      */
     public static final ForgeConfigSpec.ConfigValue<String> BROWSER_DEV_SERVER_URL;
 
+    // ==================== Server 配置 ====================
+    
+    /**
+     * [RESTART] 内置 Web 服务器端口
+     */
+    public static final ForgeConfigSpec.IntValue EMBEDDED_SERVER_PORT;
+
     // ==================== Input 配置 ====================
 
     /**
@@ -98,6 +105,18 @@ public class ClientConfig {
         
         builder.pop();
         
+        // ==================== Server 配置 ====================
+        builder.comment("内置 Web 服务器配置")
+               .push("server");
+        
+        EMBEDDED_SERVER_PORT = builder
+                .comment("[RESTART] 内置 Web 服务器端口",
+                        "当 devServerUrl 为空时，将启动内置服务器",
+                        "默认端口 25555，如有冲突可修改")
+                .defineInRange("embeddedPort", 25555, 1024, 65535);
+        
+        builder.pop();
+        
         // ==================== Input 配置 ====================
         builder.comment("输入相关配置")
                .push("input");
@@ -148,6 +167,22 @@ public class ClientConfig {
      */
     public static String getDevServerUrl() {
         return BROWSER_DEV_SERVER_URL.get();
+    }
+    
+    /**
+     * 获取内置 Web 服务器端口
+     */
+    public static int getEmbeddedServerPort() {
+        return EMBEDDED_SERVER_PORT.get();
+    }
+    
+    /**
+     * 检查是否应该使用内置服务器
+     * 当 devServerUrl 为空时使用内置服务器
+     */
+    public static boolean shouldUseEmbeddedServer() {
+        String devUrl = getDevServerUrl();
+        return devUrl == null || devUrl.trim().isEmpty();
     }
 
     /**

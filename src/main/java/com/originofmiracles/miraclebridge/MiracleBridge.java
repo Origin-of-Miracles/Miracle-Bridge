@@ -2,13 +2,18 @@ package com.originofmiracles.miraclebridge;
 
 import org.slf4j.Logger;
 
+import com.cinemamod.mcef.MCEF;
 import com.mojang.logging.LogUtils;
+import com.originofmiracles.miraclebridge.bridge.BridgeSchemeHandler;
+import com.originofmiracles.miraclebridge.browser.BrowserConsoleLogger;
 import com.originofmiracles.miraclebridge.browser.BrowserManager;
+import com.originofmiracles.miraclebridge.browser.MiracleBrowser;
 import com.originofmiracles.miraclebridge.config.ClientConfig;
 import com.originofmiracles.miraclebridge.config.ConfigReloader;
 import com.originofmiracles.miraclebridge.config.ConfigWatcher;
 import com.originofmiracles.miraclebridge.config.ModConfigs;
 import com.originofmiracles.miraclebridge.network.ModNetworkHandler;
+import com.originofmiracles.miraclebridge.server.EmbeddedWebServer;
 import com.originofmiracles.miraclebridge.util.ThreadScheduler;
 
 import net.minecraftforge.common.MinecraftForge;
@@ -57,83 +62,239 @@ public class MiracleBridge {
         modEventBus.addListener(this::clientSetup);
         modEventBus.addListener(this::loadComplete);
         
-        // 延迟注册到 Forge 事件总线，避免构造函数中泄漏 this
+        // Delayed registration to Forge event bus to avoid leaking 'this' in constructor
         modEventBus.addListener((FMLCommonSetupEvent event) -> {
             MinecraftForge.EVENT_BUS.register(instance);
         });
         
-        LOGGER.info("Miracle Bridge 已初始化 - 连接现实与奇迹...");
+        LOGGER.info("Miracle Bridge initialized - Connecting reality with miracles...");
     }
     
     /**
-     * 通用设置 - 在客户端和服务端都会运行
+     * Common setup - runs on both client and server
      */
     private void commonSetup(final FMLCommonSetupEvent event) {
-        LOGGER.info("Miracle Bridge 通用设置");
+        LOGGER.info("Miracle Bridge common setup");
         
         event.enqueueWork(() -> {
-            // 注册网络数据包
+            // Register network packets
             ModNetworkHandler.register();
             
-            LOGGER.info("网络处理器已注册");
+            LOGGER.info("Network handler registered");
         });
     }
     
     /**
-     * 仅客户端设置
+     * Client-only setup
      */
     private void clientSetup(final FMLClientSetupEvent event) {
-        LOGGER.info("Miracle Bridge 客户端设置");
+        LOGGER.info("Miracle Bridge client setup");
         
         event.enqueueWork(() -> {
-            // 初始化 BrowserManager（使用配置中的默认值）
+            // Initialize BrowserManager with config defaults
             BrowserManager.getInstance();
             
-            // 如果配置了开发服务器 URL，记录日志
+            // Start embedded web server if not using dev server
+            startEmbeddedServerIfNeeded();
+            
+            // Register bridge:// scheme handler (after MCEF initialization)
+            MCEF.scheduleForInit(success -> {
+                if (success) {
+                    registerBridgeScheme();
+                    registerConsoleLogger();
+                    
+                    // Auto-create default browser
+                    createDefaultBrowser();
+                } else {
+                    LOGGER.warn("MCEF initialization failed, bridge:// scheme not registered");
+                }
+            });
+            
+            // Log server URL
+            logServerUrl();
+            
+            LOGGER.info("Client components initialized");
+        });
+    }
+    
+    /**
+     * Start embedded web server if devServerUrl is empty
+     */
+    private void startEmbeddedServerIfNeeded() {
+        if (ClientConfig.shouldUseEmbeddedServer()) {
+            int port = ClientConfig.getEmbeddedServerPort();
+            LOGGER.info("Starting embedded web server on port {}...", port);
+            
+            EmbeddedWebServer server = EmbeddedWebServer.getInstance();
+            if (server.start(port)) {
+                LOGGER.info("Embedded web server started successfully");
+            } else {
+                LOGGER.error("Failed to start embedded web server");
+            }
+        } else {
+            LOGGER.info("Using external dev server, embedded server not started");
+        }
+    }
+    
+    /**
+     * Log the active server URL for debugging
+     */
+    private void logServerUrl() {
+        if (ClientConfig.shouldUseEmbeddedServer()) {
+            EmbeddedWebServer server = EmbeddedWebServer.getInstance();
+            if (server.isRunning()) {
+                LOGGER.info("Web UI available at: {}", server.getServerUrl());
+            }
+        } else {
             String devUrl = ClientConfig.getDevServerUrl();
-            if (devUrl != null && !devUrl.isEmpty()) {
-                LOGGER.info("开发服务器 URL: {}", devUrl);
+            LOGGER.info("Using dev server URL: {}", devUrl);
+        }
+    }
+    
+    /**
+     * Register bridge:// custom protocol handler
+     */
+    private void registerBridgeScheme() {
+        try {
+            MCEF.getApp().getHandle().registerSchemeHandlerFactory(
+                "bridge", "",
+                (browser, frame, schemeName, request) -> {
+                    String url = request.getURL();
+                    String postData = extractPostData(request);
+                    return new BridgeSchemeHandler(url, postData);
+                }
+            );
+            LOGGER.info("bridge:// scheme handler registered");
+        } catch (Exception e) {
+            LOGGER.error("Failed to register bridge:// scheme handler", e);
+        }
+    }
+    
+    /**
+     * Register console logger to capture browser JavaScript console output
+     */
+    private void registerConsoleLogger() {
+        try {
+            BrowserConsoleLogger logger = BrowserConsoleLogger.getInstance();
+            logger.start();
+            MCEF.getClient().addDisplayHandler(logger);
+            LOGGER.info("Browser console logger registered, output: {}", logger.getLogFilePath());
+        } catch (Exception e) {
+            LOGGER.error("Failed to register browser console logger", e);
+        }
+    }
+    
+    /**
+     * Auto-create default browser on startup
+     */
+    private void createDefaultBrowser() {
+        try {
+            // Get the URL to load
+            String url;
+            if (ClientConfig.shouldUseEmbeddedServer()) {
+                EmbeddedWebServer server = EmbeddedWebServer.getInstance();
+                if (server.isRunning()) {
+                    url = server.getServerUrl();
+                } else {
+                    LOGGER.warn("Embedded server not running, cannot create default browser");
+                    return;
+                }
+            } else {
+                url = ClientConfig.getDevServerUrl();
             }
             
-            LOGGER.info("客户端组件已初始化");
-        });
+            // Create default browser
+            MiracleBrowser browser = BrowserManager.getInstance().createBrowser(
+                BrowserManager.DEFAULT_BROWSER_NAME, 
+                url
+            );
+            
+            if (browser != null) {
+                LOGGER.info("Default browser created, loading: {}", url);
+            } else {
+                LOGGER.error("Failed to create default browser");
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error creating default browser", e);
+        }
     }
     
     /**
-     * 加载完成 - 所有模组都已加载
-     * 在这里启动配置监听器
+     * 从 CEF 请求中提取 POST 数据
+     */
+    private String extractPostData(org.cef.network.CefRequest request) {
+        try {
+            org.cef.network.CefPostData postData = request.getPostData();
+            if (postData == null) {
+                return "{}";
+            }
+            
+            java.util.Vector<org.cef.network.CefPostDataElement> elements = new java.util.Vector<>();
+            postData.getElements(elements);
+            
+            if (elements.isEmpty()) {
+                return "{}";
+            }
+            
+            StringBuilder sb = new StringBuilder();
+            for (org.cef.network.CefPostDataElement element : elements) {
+                int size = element.getBytesCount();
+                if (size > 0) {
+                    byte[] bytes = new byte[size];
+                    element.getBytes(size, bytes);
+                    sb.append(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+                }
+            }
+            
+            String result = sb.toString();
+            return result.isEmpty() ? "{}" : result;
+        } catch (Exception e) {
+            LOGGER.warn("Failed to extract POST data", e);
+            return "{}";
+        }
+    }
+    
+    /**
+     * Load complete - all mods have been loaded
+     * Start config watcher here
      */
     private void loadComplete(final FMLLoadCompleteEvent event) {
-        LOGGER.info("Miracle Bridge 加载完成");
+        LOGGER.info("Miracle Bridge load complete");
         
         event.enqueueWork(() -> {
-            // 初始化配置快照
+            // Initialize config snapshot
             ConfigReloader.initializeSnapshot();
             
-            // 启动配置文件监听器
+            // Start config file watcher
             ConfigWatcher.getInstance().start();
             
-            LOGGER.info("配置监听器已启动");
+            LOGGER.info("Config watcher started");
         });
     }
     
     /**
-     * 服务器停止事件处理
+     * Server stopping event handler
      */
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
-        LOGGER.info("Miracle Bridge 正在清理资源...");
+        LOGGER.info("Miracle Bridge cleaning up resources...");
         
-        // 停止配置监听器
+        // Stop config watcher
         ConfigWatcher.getInstance().stop();
         
-        // 关闭所有浏览器
+        // Stop browser console logger
+        BrowserConsoleLogger.getInstance().stop();
+        
+        // Stop embedded web server
+        EmbeddedWebServer.getInstance().stop();
+        
+        // Close all browsers
         BrowserManager.getInstance().closeAll();
         
-        // 关闭线程调度器
+        // Shutdown thread scheduler
         ThreadScheduler.shutdown();
         
-        LOGGER.info("资源清理完成");
+        LOGGER.info("Resource cleanup completed");
     }
     
     /**
@@ -141,5 +302,44 @@ public class MiracleBridge {
      */
     public static MiracleBridge getInstance() {
         return instance;
+    }
+    
+    /**
+     * 获取主浏览器的 BridgeAPI 实例
+     * 供外部模组（如 Anima）调用以注册处理器和推送事件
+     * 
+     * @return BridgeAPI 实例，如果主浏览器不存在则返回 null
+     */
+    @javax.annotation.Nullable
+    public static com.originofmiracles.miraclebridge.bridge.BridgeAPI getBridgeAPI() {
+        MiracleBrowser browser = BrowserManager.getInstance().getBrowser(BrowserManager.DEFAULT_BROWSER_NAME);
+        if (browser != null) {
+            return browser.getBridgeAPI();
+        }
+        return null;
+    }
+    
+    /**
+     * 获取指定浏览器的 BridgeAPI 实例
+     * 
+     * @param browserName 浏览器名称
+     * @return BridgeAPI 实例，如果浏览器不存在则返回 null
+     */
+    @javax.annotation.Nullable
+    public static com.originofmiracles.miraclebridge.bridge.BridgeAPI getBridgeAPI(String browserName) {
+        MiracleBrowser browser = BrowserManager.getInstance().getBrowser(browserName);
+        if (browser != null) {
+            return browser.getBridgeAPI();
+        }
+        return null;
+    }
+    
+    /**
+     * 获取浏览器管理器实例
+     * 
+     * @return BrowserManager 单例
+     */
+    public static BrowserManager getBrowserManager() {
+        return BrowserManager.getInstance();
     }
 }

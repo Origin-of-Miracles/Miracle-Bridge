@@ -1,14 +1,16 @@
 package com.originofmiracles.miraclebridge.browser;
 
-import com.mojang.logging.LogUtils;
-import com.originofmiracles.miraclebridge.config.ClientConfig;
-import org.slf4j.Logger;
-
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import javax.annotation.Nullable;
+
+import org.slf4j.Logger;
+
+import com.mojang.logging.LogUtils;
+import com.originofmiracles.miraclebridge.config.ClientConfig;
 
 /**
  * 浏览器实例管理器
@@ -104,6 +106,10 @@ public class BrowserManager {
             if (currentBrowserName == null || DEFAULT_BROWSER_NAME.equals(name)) {
                 currentBrowserName = name;
             }
+            
+            // 发布浏览器创建事件，供外部模组注册处理器
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                    new com.originofmiracles.miraclebridge.event.BrowserCreatedEvent(name, browser));
             
             LOGGER.info("已注册浏览器: {} -> {}", name, url);
             return browser;

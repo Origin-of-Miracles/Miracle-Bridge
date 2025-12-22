@@ -19,14 +19,14 @@ import com.originofmiracles.miraclebridge.bridge.BridgeMessageQueue;
 import net.minecraft.client.renderer.GameRenderer;
 
 /**
- * MCEF 浏览器实例的高层封装。
+ * High-level wrapper for MCEF browser instance.
  * 
- * 提供简化的 API：
- * - 浏览器生命周期管理
- * - URL 导航
- * - JavaScript 执行
- * - 输入事件处理
- * - 纹理渲染
+ * Provides simplified API for:
+ * - Browser lifecycle management
+ * - URL navigation
+ * - JavaScript execution
+ * - Input event handling
+ * - Texture rendering
  * 
  * @see MCEFBrowser
  */
@@ -45,23 +45,23 @@ public class MiracleBrowser {
     private int height;
     
     /**
-     * 创建新的浏览器封装器
-     * @param transparent 浏览器背景是否透明
+     * Create a new browser wrapper
+     * @param transparent whether the browser background is transparent
      */
     public MiracleBrowser(boolean transparent) {
         this.transparent = transparent;
     }
     
     /**
-     * 使用指定 URL 初始化浏览器
-     * @param url 初始 URL
-     * @param width 浏览器宽度（像素）
-     * @param height 浏览器高度（像素）
-     * @return 初始化是否成功
+     * Initialize browser with specified URL
+     * @param url initial URL
+     * @param width browser width (pixels)
+     * @param height browser height (pixels)
+     * @return true if initialization succeeded
      */
     public boolean create(String url, int width, int height) {
         if (!MCEF.isInitialized()) {
-            LOGGER.error("MCEF 未初始化！无法创建浏览器。");
+            LOGGER.error("MCEF not initialized! Cannot create browser.");
             return false;
         }
         
@@ -71,39 +71,39 @@ public class MiracleBrowser {
         try {
             MCEFBrowser createdBrowser = MCEF.createBrowser(url, transparent);
             if (createdBrowser == null) {
-                LOGGER.error("MCEF.createBrowser 返回 null");
+                LOGGER.error("MCEF.createBrowser returned null");
                 return false;
             }
             this.browser = createdBrowser;
             createdBrowser.resize(width, height);
             
-            // 初始化 BridgeAPI
+            // Initialize BridgeAPI
             this.bridgeAPI = new BridgeAPI(this);
             
-            // 注入桥接脚本
+            // Inject bridge script
             injectBridgeScript();
             
-            LOGGER.info("浏览器已创建: {} ({}x{})", url, width, height);
+            LOGGER.info("Browser created: {} ({}x{})", url, width, height);
             return true;
         } catch (Exception e) {
-            LOGGER.error("创建浏览器失败", e);
+            LOGGER.error("Failed to create browser", e);
             return false;
         }
     }
     
     /**
-     * 加载新 URL
+     * Load a new URL
      */
     public void loadUrl(String url) {
         if (browser != null) {
             browser.loadURL(url);
-            LOGGER.debug("正在加载 URL: {}", url);
+            LOGGER.debug("Loading URL: {}", url);
         }
     }
     
     /**
-     * 在浏览器上下文中执行 JavaScript 代码
-     * @param script 要执行的 JavaScript 代码
+     * Execute JavaScript code in browser context
+     * @param script JavaScript code to execute
      */
     public void executeJavaScript(String script) {
         if (browser != null) {
@@ -112,7 +112,7 @@ public class MiracleBrowser {
     }
     
     /**
-     * 调整浏览器视口大小
+     * Resize browser viewport
      */
     public void resize(int width, int height) {
         if (browser != null && (this.width != width || this.height != height)) {
@@ -123,38 +123,38 @@ public class MiracleBrowser {
     }
     
     /**
-     * 获取用于渲染的 OpenGL 纹理 ID
-     * @return 纹理 ID，浏览器未就绪时返回 -1
+     * Get OpenGL texture ID for rendering
+     * @return texture ID, or -1 if browser not ready
      */
     public int getTextureId() {
         return browser != null ? browser.getRenderer().getTextureID() : -1;
     }
     
     /**
-     * 在指定位置将浏览器渲染到屏幕
-     * @param x 屏幕 X 位置
-     * @param y 屏幕 Y 位置
-     * @param renderWidth 渲染宽度
-     * @param renderHeight 渲染高度
+     * Render browser to screen at specified position
+     * @param x screen X position
+     * @param y screen Y position
+     * @param renderWidth render width
+     * @param renderHeight render height
      */
     public void render(int x, int y, int renderWidth, int renderHeight) {
         if (browser == null) return;
         
         int textureId = getTextureId();
-        // 纹理ID必须大于0（0表示无效纹理，-1表示浏览器未就绪）
+        // Texture ID must be > 0 (0 = invalid texture, -1 = browser not ready)
         if (textureId <= 0) return;
         
-        // 设置渲染状态
+        // Set render state
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
         RenderSystem.setShaderTexture(0, textureId);
         
-        // 构建四边形顶点
+        // Build quad vertices
         BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
         bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
         
-        // 顶点顺序：左下 -> 右下 -> 右上 -> 左上（顺时针）
+        // Vertex order: bottom-left -> bottom-right -> top-right -> top-left (clockwise)
         bufferBuilder.vertex(x, y + renderHeight, 0).uv(0f, 1f).color(255, 255, 255, 255).endVertex();
         bufferBuilder.vertex(x + renderWidth, y + renderHeight, 0).uv(1f, 1f).color(255, 255, 255, 255).endVertex();
         bufferBuilder.vertex(x + renderWidth, y, 0).uv(1f, 0f).color(255, 255, 255, 255).endVertex();
@@ -165,7 +165,7 @@ public class MiracleBrowser {
         RenderSystem.disableBlend();
     }
     
-    // ==================== 输入事件 ====================
+    // ==================== Input Events ====================
     
     public void sendMousePress(int x, int y, int button) {
         if (browser != null) {
@@ -209,29 +209,29 @@ public class MiracleBrowser {
         }
     }
     
-    // ==================== 生命周期 ====================
+    // ==================== Lifecycle ====================
     
     /**
-     * 检查浏览器是否就绪
+     * Check if browser is ready
      */
     public boolean isReady() {
         return browser != null;
     }
     
     /**
-     * 关闭并释放浏览器资源
+     * Close and release browser resources
      */
     public void close() {
         if (browser != null) {
             browser.close();
             browser = null;
             bridgeAPI = null;
-            LOGGER.info("浏览器已关闭");
+            LOGGER.info("Browser closed");
         }
     }
     
     /**
-     * 获取 BridgeAPI 实例
+     * Get BridgeAPI instance
      */
     @Nullable
     public BridgeAPI getBridgeAPI() {
@@ -239,28 +239,28 @@ public class MiracleBrowser {
     }
     
     /**
-     * 注入桥接脚本到浏览器
+     * Inject bridge script into browser
      */
     private void injectBridgeScript() {
         if (browser == null) return;
         
-        // 注入 JS SDK
+        // Inject JS SDK
         String bridgeScript = BridgeMessageQueue.generateBridgeScript();
         executeJavaScript(bridgeScript);
         
-        LOGGER.debug("桥接脚本已注入");
+        LOGGER.debug("Bridge script injected");
     }
     
     /**
-     * 重新注入桥接脚本（页面导航后调用）
+     * Re-inject bridge script (call after page navigation)
      */
     public void reinjectBridgeScript() {
         injectBridgeScript();
     }
     
     /**
-     * 获取底层 MCEF 浏览器实例
-     * 谨慎使用 - 尽可能使用高层方法
+     * Get underlying MCEF browser instance
+     * Use with caution - prefer high-level methods
      */
     @Nullable
     public MCEFBrowser getRawBrowser() {
@@ -268,28 +268,28 @@ public class MiracleBrowser {
     }
     
     /**
-     * 获取浏览器宽度
+     * Get browser width
      */
     public int getWidth() {
         return width;
     }
     
     /**
-     * 获取浏览器高度
+     * Get browser height
      */
     public int getHeight() {
         return height;
     }
     
     /**
-     * 是否透明背景
+     * Whether background is transparent
      */
     public boolean isTransparent() {
         return transparent;
     }
     
     /**
-     * 检查 MCEF 是否可用且已初始化
+     * Check if MCEF is available and initialized
      */
     public static boolean isMCEFAvailable() {
         try {

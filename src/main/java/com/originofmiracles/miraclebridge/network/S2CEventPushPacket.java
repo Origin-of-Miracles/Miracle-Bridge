@@ -14,19 +14,19 @@ import org.slf4j.Logger;
 import java.util.function.Supplier;
 
 /**
- * 服务端 → 客户端 事件推送数据包
+ * Server → Client Event Push Packet
  * 
- * 用于服务端主动向客户端推送游戏事件。
- * 客户端收到后通过 BridgeAPI 转发给 JavaScript 前端。
+ * Used for server to actively push game events to client.
+ * Client forwards events to JavaScript frontend via BridgeAPI.
  * 
- * 事件类型：
- * - entity_spawn: 实体生成
- * - entity_death: 实体死亡
- * - block_change: 方块变化
- * - chat_message: 聊天消息
- * - player_join: 玩家加入
- * - player_leave: 玩家离开
- * - custom: 自定义事件
+ * Event types:
+ * - entity_spawn: Entity spawned
+ * - entity_death: Entity died
+ * - block_change: Block changed
+ * - chat_message: Chat message
+ * - player_join: Player joined
+ * - player_leave: Player left
+ * - custom: Custom event
  */
 public class S2CEventPushPacket {
     
@@ -34,7 +34,7 @@ public class S2CEventPushPacket {
     private static final Gson GSON = new Gson();
     
     /**
-     * 最大数据长度（字节）
+     * Maximum data length (bytes)
      */
     private static final int MAX_DATA_LENGTH = 65536; // 64KB
     
@@ -43,11 +43,11 @@ public class S2CEventPushPacket {
     private final String jsonData;
     
     /**
-     * 创建事件推送数据包
+     * Create event push packet
      * 
-     * @param eventType 事件类型分类（如 "entity", "block", "chat"）
-     * @param eventName 具体事件名称（如 "spawn", "death", "message"）
-     * @param jsonData JSON 格式的事件数据
+     * @param eventType event type category (e.g. "entity", "block", "chat")
+     * @param eventName specific event name (e.g. "spawn", "death", "message")
+     * @param jsonData JSON format event data
      */
     public S2CEventPushPacket(String eventType, String eventName, String jsonData) {
         this.eventType = eventType;
@@ -56,14 +56,14 @@ public class S2CEventPushPacket {
     }
     
     /**
-     * 便捷构造函数：从 JsonObject 创建
+     * Convenience constructor: create from JsonObject
      */
     public static S2CEventPushPacket create(String eventType, String eventName, JsonObject data) {
         return new S2CEventPushPacket(eventType, eventName, GSON.toJson(data));
     }
     
     /**
-     * 编码数据包到网络缓冲区
+     * Encode packet to network buffer
      */
     public void encode(FriendlyByteBuf buf) {
         buf.writeUtf(eventType, 64);
@@ -72,7 +72,7 @@ public class S2CEventPushPacket {
     }
     
     /**
-     * 从网络缓冲区解码数据包
+     * Decode packet from network buffer
      */
     public static S2CEventPushPacket decode(FriendlyByteBuf buf) {
         String eventType = buf.readUtf(64);
@@ -82,7 +82,7 @@ public class S2CEventPushPacket {
     }
     
     /**
-     * 处理接收到的数据包（客户端）
+     * Handle received packet (client side)
      */
     public void handle(Supplier<NetworkEvent.Context> ctxSupplier) {
         NetworkEvent.Context ctx = ctxSupplier.get();
@@ -90,34 +90,34 @@ public class S2CEventPushPacket {
             try {
                 handleEvent();
             } catch (Exception e) {
-                LOGGER.error("处理事件推送失败: type={}, name={}", eventType, eventName, e);
+                LOGGER.error("Failed to handle event push: type={}, name={}", eventType, eventName, e);
             }
         });
         ctx.setPacketHandled(true);
     }
     
     /**
-     * 实际处理事件的逻辑
+     * Actual event handling logic
      */
     private void handleEvent() {
         if (ClientConfig.isDebugEnabled()) {
-            LOGGER.debug("收到事件推送: type={}, name={}, size={} bytes", 
+            LOGGER.debug("Received event push: type={}, name={}, size={} bytes", 
                     eventType, eventName, jsonData.length());
         }
         
-        // 构造完整的事件名称
+        // Construct full event name
         String fullEventName = eventType + ":" + eventName;
         
-        // 解析数据
+        // Parse data
         JsonObject data;
         try {
             data = GSON.fromJson(jsonData, JsonObject.class);
         } catch (Exception e) {
-            LOGGER.error("解析事件数据失败: {}", jsonData, e);
+            LOGGER.error("Failed to parse event data: {}", jsonData, e);
             return;
         }
         
-        // 向所有浏览器推送事件
+        // Push event to all browsers
         for (String browserName : BrowserManager.getInstance().getBrowserNames()) {
             MiracleBrowser browser = BrowserManager.getInstance().getBrowser(browserName);
             if (browser != null && browser.isReady()) {
@@ -129,14 +129,14 @@ public class S2CEventPushPacket {
         }
         
         if (ClientConfig.isDebugEnabled()) {
-            LOGGER.debug("事件已推送到 {} 个浏览器", BrowserManager.getInstance().getBrowserCount());
+            LOGGER.debug("Event pushed to {} browsers", BrowserManager.getInstance().getBrowserCount());
         }
     }
     
-    // ==================== 便捷工厂方法 ====================
+    // ==================== Convenience Factory Methods ====================
     
     /**
-     * 创建实体生成事件
+     * Create entity spawn event
      */
     public static S2CEventPushPacket entitySpawn(int entityId, String entityType, double x, double y, double z) {
         JsonObject data = new JsonObject();
@@ -149,7 +149,7 @@ public class S2CEventPushPacket {
     }
     
     /**
-     * 创建实体死亡事件
+     * Create entity death event
      */
     public static S2CEventPushPacket entityDeath(int entityId, String entityType, String cause) {
         JsonObject data = new JsonObject();
@@ -160,7 +160,7 @@ public class S2CEventPushPacket {
     }
     
     /**
-     * 创建聊天消息事件
+     * Create chat message event
      */
     public static S2CEventPushPacket chatMessage(String sender, String message, boolean isSystem) {
         JsonObject data = new JsonObject();
@@ -172,7 +172,7 @@ public class S2CEventPushPacket {
     }
     
     /**
-     * 创建玩家加入事件
+     * Create player join event
      */
     public static S2CEventPushPacket playerJoin(String playerName, String uuid) {
         JsonObject data = new JsonObject();
@@ -183,7 +183,7 @@ public class S2CEventPushPacket {
     }
     
     /**
-     * 创建玩家离开事件
+     * Create player leave event
      */
     public static S2CEventPushPacket playerLeave(String playerName, String uuid) {
         JsonObject data = new JsonObject();
@@ -194,7 +194,7 @@ public class S2CEventPushPacket {
     }
     
     /**
-     * 创建自定义事件
+     * Create custom event
      */
     public static S2CEventPushPacket custom(String eventName, JsonObject data) {
         return create("custom", eventName, data);
@@ -215,7 +215,7 @@ public class S2CEventPushPacket {
     }
     
     /**
-     * 获取完整事件名称
+     * Get full event name
      */
     public String getFullEventName() {
         return eventType + ":" + eventName;

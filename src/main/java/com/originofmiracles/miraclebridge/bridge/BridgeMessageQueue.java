@@ -1,26 +1,28 @@
 package com.originofmiracles.miraclebridge.bridge;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.mojang.logging.LogUtils;
-import org.slf4j.Logger;
-
-import javax.annotation.Nullable;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
+import javax.annotation.Nullable;
+
+import org.slf4j.Logger;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
+
 /**
- * 双向消息队列
+ * Bidirectional Message Queue
  * 
- * 提供 JS ↔ Java 的异步消息传递机制。
- * 由于 MCEF 的 SchemeHandler 注册时机限制，采用轮询模式替代。
+ * Provides async message passing mechanism for JS ↔ Java communication.
+ * Uses polling mode due to MCEF's SchemeHandler registration timing limitations.
  * 
- * 工作流程：
- * 1. JS 调用 submitRequest() 提交请求到请求队列
- * 2. Java 主线程轮询 pollRequest() 处理请求
- * 3. Java 处理完成后调用 submitResponse() 提交响应到响应队列
- * 4. JS 轮询 pollResponse() 获取响应
+ * Workflow:
+ * 1. JS calls submitRequest() to add request to queue
+ * 2. Java main thread polls pollRequest() to process requests
+ * 3. Java calls submitResponse() after processing to add response to queue
+ * 4. JS polls pollResponse() to get response
  */
 public class BridgeMessageQueue {
     
@@ -28,7 +30,7 @@ public class BridgeMessageQueue {
     private static final Gson GSON = new Gson();
     
     /**
-     * 消息类型
+     * Message type
      */
     public enum MessageType {
         REQUEST,
@@ -37,7 +39,7 @@ public class BridgeMessageQueue {
     }
     
     /**
-     * 消息包装类
+     * Message wrapper class
      */
     public static class Message {
         private final long id;
@@ -93,35 +95,35 @@ public class BridgeMessageQueue {
     private final AtomicLong messageIdGenerator = new AtomicLong(0);
     
     /**
-     * JS → Java 请求队列
+     * JS → Java request queue
      */
     private final Queue<Message> requestQueue = new ConcurrentLinkedQueue<>();
     
     /**
-     * Java → JS 响应队列
+     * Java → JS response queue
      */
     private final Queue<Message> responseQueue = new ConcurrentLinkedQueue<>();
     
     /**
-     * Java → JS 事件队列
+     * Java → JS event queue
      */
     private final Queue<Message> eventQueue = new ConcurrentLinkedQueue<>();
     
     /**
-     * 最大队列长度（防止内存溢出）
+     * Max queue size (prevent memory overflow)
      */
     private static final int MAX_QUEUE_SIZE = 1000;
     
     /**
-     * 提交请求（JS 调用）
+     * Submit request (called by JS)
      * 
-     * @param action 动作名称
-     * @param payload JSON 负载
-     * @return 消息 ID，用于匹配响应
+     * @param action action name
+     * @param payload JSON payload
+     * @return message ID for matching response
      */
     public long submitRequest(String action, String payload) {
         if (requestQueue.size() >= MAX_QUEUE_SIZE) {
-            LOGGER.warn("请求队列已满，丢弃请求: action={}", action);
+            LOGGER.warn("Request queue full, dropping request: action={}", action);
             return -1;
         }
         
@@ -129,14 +131,14 @@ public class BridgeMessageQueue {
         Message message = new Message(messageId, MessageType.REQUEST, action, payload);
         requestQueue.offer(message);
         
-        LOGGER.debug("请求已入队: {}", message);
+        LOGGER.debug("Request enqueued: {}", message);
         return messageId;
     }
     
     /**
-     * 轮询请求（Java 调用）
+     * Poll request (called by Java)
      * 
-     * @return 下一个待处理的请求，队列为空时返回 null
+     * @return next pending request, or null if queue is empty
      */
     @Nullable
     public Message pollRequest() {
@@ -144,7 +146,7 @@ public class BridgeMessageQueue {
     }
     
     /**
-     * 查看请求（不移除）
+     * Peek at request (without removing)
      */
     @Nullable
     public Message peekRequest() {
@@ -152,28 +154,28 @@ public class BridgeMessageQueue {
     }
     
     /**
-     * 提交响应（Java 调用）
+     * Submit response (called by Java)
      * 
-     * @param requestId 对应的请求 ID
-     * @param action 动作名称
-     * @param payload JSON 负载
+     * @param requestId corresponding request ID
+     * @param action action name
+     * @param payload JSON payload
      */
     public void submitResponse(long requestId, String action, String payload) {
         if (responseQueue.size() >= MAX_QUEUE_SIZE) {
-            LOGGER.warn("响应队列已满，丢弃响应: requestId={}", requestId);
+            LOGGER.warn("Response queue full, dropping response: requestId={}", requestId);
             return;
         }
         
         Message message = new Message(requestId, MessageType.RESPONSE, action, payload);
         responseQueue.offer(message);
         
-        LOGGER.debug("响应已入队: {}", message);
+        LOGGER.debug("Response enqueued: {}", message);
     }
     
     /**
-     * 轮询响应（JS 调用）
+     * Poll response (called by JS)
      * 
-     * @return 下一个响应，队列为空时返回 null
+     * @return next response, or null if queue is empty
      */
     @Nullable
     public Message pollResponse() {
@@ -181,10 +183,10 @@ public class BridgeMessageQueue {
     }
     
     /**
-     * 轮询所有响应（JS 调用）
+     * Poll all responses (called by JS)
      * 
-     * @param maxCount 最大获取数量
-     * @return JSON 数组字符串
+     * @param maxCount maximum number to retrieve
+     * @return JSON array string
      */
     public String pollAllResponses(int maxCount) {
         StringBuilder sb = new StringBuilder("[");
@@ -204,14 +206,14 @@ public class BridgeMessageQueue {
     }
     
     /**
-     * 推送事件（Java 调用）
+     * Push event (called by Java)
      * 
-     * @param eventName 事件名称
-     * @param payload JSON 负载
+     * @param eventName event name
+     * @param payload JSON payload
      */
     public void pushEvent(String eventName, String payload) {
         if (eventQueue.size() >= MAX_QUEUE_SIZE) {
-            LOGGER.warn("事件队列已满，丢弃事件: event={}", eventName);
+            LOGGER.warn("Event queue full, dropping event: event={}", eventName);
             return;
         }
         
@@ -219,13 +221,13 @@ public class BridgeMessageQueue {
         Message message = new Message(messageId, MessageType.EVENT, eventName, payload);
         eventQueue.offer(message);
         
-        LOGGER.debug("事件已入队: {}", message);
+        LOGGER.debug("Event enqueued: {}", message);
     }
     
     /**
-     * 轮询事件（JS 调用）
+     * Poll event (called by JS)
      * 
-     * @return 下一个事件，队列为空时返回 null
+     * @return next event, or null if queue is empty
      */
     @Nullable
     public Message pollEvent() {
@@ -233,10 +235,10 @@ public class BridgeMessageQueue {
     }
     
     /**
-     * 轮询所有事件（JS 调用）
+     * Poll all events (called by JS)
      * 
-     * @param maxCount 最大获取数量
-     * @return JSON 数组字符串
+     * @param maxCount maximum number to retrieve
+     * @return JSON array string
      */
     public String pollAllEvents(int maxCount) {
         StringBuilder sb = new StringBuilder("[");
@@ -288,22 +290,47 @@ public class BridgeMessageQueue {
     
     /**
      * 生成用于 JS 注入的桥接代码
+     * 
+     * 实现方案：
+     * 1. JS 调用 call() 时，将请求存入全局请求队列 __miracleBridgeRequestQueue
+     * 2. Java 定期调用 __miracleBridgePollRequests() 获取待处理请求
+     * 3. Java 处理完成后调用 __miracleBridgeHandleResponse() 返回响应
      */
     public static String generateBridgeScript() {
         return """
             (function() {
-                // MiracleBridge JS SDK
+                // MiracleBridge JS SDK v2 - 基于轮询的通信机制
                 window.MiracleBridge = window.MiracleBridge || {};
                 
                 const pendingRequests = new Map();
                 const eventListeners = new Map();
-                let pollInterval = null;
+                
+                // 全局请求队列 - Java 端会定期轮询
+                window.__miracleBridgeRequestQueue = window.__miracleBridgeRequestQueue || [];
+                window.__miracleBridgeReady = true;
                 
                 // 生成唯一请求 ID
                 let requestIdCounter = 0;
                 function generateRequestId() {
                     return 'req_' + Date.now() + '_' + (++requestIdCounter);
                 }
+                
+                // 提交请求到队列（供内部使用）
+                window.__miracleBridgeSubmitRequest = function(requestId, action, payload) {
+                    window.__miracleBridgeRequestQueue.push({
+                        id: requestId,
+                        action: action,
+                        payload: payload,
+                        timestamp: Date.now()
+                    });
+                    console.debug('[MiracleBridge] Request submitted:', action, requestId);
+                };
+                
+                // Java 调用此函数获取所有待处理请求
+                window.__miracleBridgePollRequests = function() {
+                    const requests = window.__miracleBridgeRequestQueue.splice(0);
+                    return JSON.stringify(requests);
+                };
                 
                 // 调用 Java 方法
                 MiracleBridge.call = function(action, payload = {}) {
@@ -331,14 +358,13 @@ public class BridgeMessageQueue {
                             }
                         });
                         
-                        // 发送请求（由 Java 注入实现）
-                        if (window.__miracleBridgeSubmitRequest) {
-                            window.__miracleBridgeSubmitRequest(requestId, action, JSON.stringify(payload));
-                        } else {
-                            reject(new Error('Bridge not initialized'));
-                        }
+                        // 发送请求到队列
+                        window.__miracleBridgeSubmitRequest(requestId, action, JSON.stringify(payload));
                     });
                 };
+                
+                // 调用服务端 API（与 call 相同，由 Java 端区分处理）
+                MiracleBridge.callServer = MiracleBridge.call;
                 
                 // 监听事件
                 MiracleBridge.on = function(eventName, callback) {
@@ -355,39 +381,62 @@ public class BridgeMessageQueue {
                     }
                 };
                 
+                // 单次监听
+                MiracleBridge.once = function(eventName, callback) {
+                    const wrapper = (data) => {
+                        MiracleBridge.off(eventName, wrapper);
+                        callback(data);
+                    };
+                    MiracleBridge.on(eventName, wrapper);
+                };
+                
                 // 处理响应（由 Java 调用）
                 window.__miracleBridgeHandleResponse = function(requestId, success, data) {
+                    console.debug('[MiracleBridge] Response received:', requestId, success);
                     const pending = pendingRequests.get(requestId);
                     if (pending) {
                         if (success) {
-                            pending.resolve(JSON.parse(data));
+                            try {
+                                pending.resolve(JSON.parse(data));
+                            } catch (e) {
+                                pending.resolve(data);
+                            }
                         } else {
                             pending.reject(new Error(data));
                         }
+                    } else {
+                        console.warn('[MiracleBridge] No pending request for:', requestId);
                     }
                 };
                 
                 // 处理事件（由 Java 调用）
                 window.__miracleBridgeHandleEvent = function(eventName, data) {
+                    console.debug('[MiracleBridge] Event received:', eventName);
                     const listeners = eventListeners.get(eventName);
+                    let parsedData;
+                    try {
+                        parsedData = JSON.parse(data);
+                    } catch (e) {
+                        parsedData = data;
+                    }
+                    
                     if (listeners) {
-                        const parsedData = JSON.parse(data);
                         listeners.forEach(callback => {
                             try {
                                 callback(parsedData);
                             } catch (e) {
-                                console.error('Event handler error:', e);
+                                console.error('[MiracleBridge] Event handler error:', e);
                             }
                         });
                     }
                     
                     // 同时触发 DOM 事件
-                    window.dispatchEvent(new CustomEvent(eventName, { detail: JSON.parse(data) }));
+                    window.dispatchEvent(new CustomEvent(eventName, { detail: parsedData }));
                 };
                 
-                // 检查桥接状态
+                // 检查桥接状态 - 现在永远返回 true 因为请求队列机制始终可用
                 MiracleBridge.isReady = function() {
-                    return typeof window.__miracleBridgeSubmitRequest === 'function';
+                    return window.__miracleBridgeReady === true;
                 };
                 
                 // 等待桥接就绪
@@ -401,12 +450,58 @@ public class BridgeMessageQueue {
                                     clearInterval(check);
                                     resolve();
                                 }
-                            }, 100);
+                            }, 50);
                         }
                     });
                 };
                 
-                console.log('[MiracleBridge] JS SDK initialized');
+                // 配置（供前端调用）
+                MiracleBridge.configure = function(options) {
+                    console.log('[MiracleBridge] Configure:', options);
+                };
+                
+                // 启用调试
+                MiracleBridge.enableDebug = function() {
+                    console.log('[MiracleBridge] Debug enabled');
+                };
+                
+                // 获取状态
+                MiracleBridge.getStatus = function() {
+                    return {
+                        ready: MiracleBridge.isReady(),
+                        pendingRequests: pendingRequests.size,
+                        queueSize: window.__miracleBridgeRequestQueue.length,
+                        eventListeners: Array.from(eventListeners.keys()),
+                        config: { timeout: 30000, debug: false, pollInterval: 50 }
+                    };
+                };
+                
+                // 便捷方法 - getPlayerInfo
+                MiracleBridge.getPlayerInfo = function() {
+                    return MiracleBridge.call('getPlayerInfo');
+                };
+                
+                // 便捷方法 - getInventory
+                MiracleBridge.getInventory = function() {
+                    return MiracleBridge.call('getInventory');
+                };
+                
+                // 便捷方法 - teleport
+                MiracleBridge.teleport = function(x, y, z) {
+                    return MiracleBridge.call('teleport', { x, y, z });
+                };
+                
+                // 便捷方法 - sendChat
+                MiracleBridge.sendChat = function(message) {
+                    return MiracleBridge.call('sendChat', { message });
+                };
+                
+                // 便捷方法 - executeCommand
+                MiracleBridge.executeCommand = function(command) {
+                    return MiracleBridge.call('executeCommand', { command });
+                };
+                
+                console.log('[MiracleBridge] JS SDK v2 initialized - polling mode');
             })();
             """;
     }

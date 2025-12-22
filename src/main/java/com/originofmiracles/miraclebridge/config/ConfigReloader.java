@@ -18,12 +18,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * 配置重载器
+ * Config Reloader
  * 
- * 负责处理配置文件的重载逻辑，包括：
- * - 区分热生效和重启生效的配置项
- * - 配置校验失败时的回退机制
- * - 向管理员发送通知
+ * Handles config file reload logic, including:
+ * - Distinguishing hot-reload vs restart-required config items
+ * - Rollback mechanism on validation failure
+ * - Admin notification
  */
 public class ConfigReloader {
     
@@ -32,7 +32,7 @@ public class ConfigReloader {
     private static final DateTimeFormatter BACKUP_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
     
     /**
-     * 需要重启才能生效的客户端配置项
+     * Client config items that require restart to take effect
      */
     private static final Set<String> CLIENT_RESTART_REQUIRED = Set.of(
             "browser.defaultWidth",
@@ -41,8 +41,8 @@ public class ConfigReloader {
     );
     
     /**
-     * 需要重启才能生效的服务端配置项
-     * TODO: 在实现服务端配置热重载时使用
+     * Server config items that require restart to take effect
+     * TODO: Use when implementing server config hot-reload
      */
     @SuppressWarnings("unused")
     private static final Set<String> SERVER_RESTART_REQUIRED = Set.of(
@@ -50,7 +50,7 @@ public class ConfigReloader {
     );
     
     /**
-     * 配置项快照，用于检测变更
+     * Config item snapshot for detecting changes
      */
     private static class ConfigSnapshot {
         final int browserWidth;
@@ -72,7 +72,7 @@ public class ConfigReloader {
         }
         
         /**
-         * 获取与另一快照相比变更的配置项路径
+         * Get changed config paths compared to another snapshot
          */
         Set<String> getChangedPaths(ConfigSnapshot other) {
             Set<String> changed = new HashSet<>();
@@ -88,55 +88,55 @@ public class ConfigReloader {
     }
     
     /**
-     * 最后一次有效的配置快照
-     * 用于配置回退机制和变更检测
+     * Last valid config snapshot
+     * Used for config rollback and change detection
      */
-    @SuppressWarnings("unused") // TODO: 完善配置回退机制时使用
+    @SuppressWarnings("unused") // TODO: Use when implementing config rollback
     private static ConfigSnapshot lastValidClientSnapshot;
     
     /**
-     * 初始化配置快照（在配置加载完成后调用）
+     * Initialize config snapshot (call after config is loaded)
      */
     public static void initializeSnapshot() {
         lastValidClientSnapshot = new ConfigSnapshot();
-        LOGGER.info("配置快照已初始化");
+        LOGGER.info("Config snapshot initialized");
     }
     
     /**
-     * 尝试重载客户端配置
+     * Try to reload client config
      * 
-     * @return true 如果重载成功，false 如果需要回退
+     * @return true if reload succeeded, false if rollback needed
      */
     public static boolean tryReloadClientConfig() {
         Path configPath = ModConfigs.getClientConfigPath();
         
         if (!Files.exists(configPath)) {
-            LOGGER.warn("客户端配置文件不存在: {}", configPath);
+            LOGGER.warn("Client config file not found: {}", configPath);
             return false;
         }
         
-        // 保存当前快照用于比较
+        // Save current snapshot for comparison
         ConfigSnapshot beforeReload = new ConfigSnapshot();
         
-        // 校验配置
+        // Validate config
         ConfigValidator.ValidationResult result = ConfigValidator.validateClientConfig(configPath);
         
         if (!result.isValid()) {
-            LOGGER.error("客户端配置校验失败: {} - {}", result.getFieldPath(), result.getErrorMessage());
+            LOGGER.error("Client config validation failed: {} - {}", result.getFieldPath(), result.getErrorMessage());
             handleConfigError(configPath, result, true);
             return false;
         }
         
-        // 配置有效，检查变更
+        // Config valid, check changes
         ConfigSnapshot afterReload = new ConfigSnapshot();
         Set<String> changedPaths = beforeReload.getChangedPaths(afterReload);
         
         if (changedPaths.isEmpty()) {
-            LOGGER.debug("客户端配置无变更");
+            LOGGER.debug("Client config unchanged");
             return true;
         }
         
-        // 检查是否有需要重启的配置项变更
+        // Check if any restart-required items changed
         Set<String> restartRequired = new HashSet<>(changedPaths);
         restartRequired.retainAll(CLIENT_RESTART_REQUIRED);
         
@@ -144,56 +144,55 @@ public class ConfigReloader {
             notifyRestartRequired(restartRequired);
         }
         
-        // 更新快照
+        // Update snapshot
         lastValidClientSnapshot = afterReload;
         
-        LOGGER.info("客户端配置已重载，变更项: {}", changedPaths);
+        LOGGER.info("Client config reloaded, changed items: {}", changedPaths);
         return true;
     }
     
     /**
-     * 尝试重载服务端配置
+     * Try to reload server config
      */
     public static boolean tryReloadServerConfig() {
         Path configPath = ModConfigs.getServerConfigPath();
         
         if (!Files.exists(configPath)) {
-            LOGGER.warn("服务端配置文件不存在: {}", configPath);
+            LOGGER.warn("Server config file not found: {}", configPath);
             return false;
         }
         
         ConfigValidator.ValidationResult result = ConfigValidator.validateServerConfig(configPath);
         
         if (!result.isValid()) {
-            LOGGER.error("服务端配置校验失败: {} - {}", result.getFieldPath(), result.getErrorMessage());
+            LOGGER.error("Server config validation failed: {} - {}", result.getFieldPath(), result.getErrorMessage());
             handleConfigError(configPath, result, false);
             return false;
         }
         
-        LOGGER.info("服务端配置已重载");
+        LOGGER.info("Server config reloaded");
         return true;
     }
     
     /**
-     * 处理配置错误：备份错误文件，恢复旧配置，通知管理员
+     * Handle config error: backup error file, restore old config, notify admins
      */
     private static void handleConfigError(Path configPath, ConfigValidator.ValidationResult result, boolean isClient) {
-        // 1. 备份错误的配置文件
+        // 1. Backup the erroneous config file
         Path backupPath = backupErrorConfig(configPath);
         
-        // 2. 恢复旧配置（通过重新保存 ForgeConfigSpec 的当前值）
-        // Forge 会自动处理配置文件的保存，这里我们不需要手动恢复
-        // 因为错误的配置不会被 Forge 加载
+        // 2. Restore old config (Forge handles config file saving automatically)
+        // We don't need to manually restore because Forge won't load invalid config
         
-        // 3. 通知管理员
+        // 3. Notify admins
         String errorMessage = String.format(
-                "§c[Miracle Bridge] 配置校验失败§r\n" +
-                "§e配置项: §f%s\n" +
-                "§e错误: §f%s\n" +
-                "§e错误配置已备份至: §f%s",
+                "§c[Miracle Bridge] Config validation failed§r\n" +
+                "§eConfig item: §f%s\n" +
+                "§eError: §f%s\n" +
+                "§eError config backed up to: §f%s",
                 result.getFieldPath(),
                 result.getErrorMessage(),
-                backupPath != null ? backupPath.getFileName().toString() : "(备份失败)"
+                backupPath != null ? backupPath.getFileName().toString() : "(backup failed)"
         );
         
         LOGGER.error(errorMessage.replace("§.", "").replace("§f", "").replace("§e", "").replace("§c", "").replace("§r", ""));
@@ -206,10 +205,10 @@ public class ConfigReloader {
     }
     
     /**
-     * 备份错误的配置文件
+     * Backup erroneous config file
      * 
-     * @param configPath 配置文件路径
-     * @return 备份文件路径，失败返回 null
+     * @param configPath config file path
+     * @return backup file path, or null on failure
      */
     @Nullable
     private static Path backupErrorConfig(Path configPath) {
@@ -219,26 +218,26 @@ public class ConfigReloader {
             Path backupPath = configPath.resolveSibling(backupName);
             
             Files.copy(configPath, backupPath, StandardCopyOption.REPLACE_EXISTING);
-            LOGGER.info("错误配置已备份至: {}", backupPath);
+            LOGGER.info("Error config backed up to: {}", backupPath);
             
             return backupPath;
             
         } catch (IOException e) {
-            LOGGER.error("备份错误配置失败", e);
+            LOGGER.error("Failed to backup error config", e);
             return null;
         }
     }
     
     /**
-     * 通知管理员有配置项需要重启才能生效
+     * Notify admins that some config items require restart to take effect
      */
     private static void notifyRestartRequired(Set<String> configPaths) {
         String message = String.format(
-                "§6[Miracle Bridge] 以下配置项变更需要重启才能生效:§r\n§f%s",
+                "§6[Miracle Bridge] The following config changes require restart to take effect:§r\n§f%s",
                 String.join(", ", configPaths)
         );
         
-        LOGGER.warn("配置项变更需要重启: {}", configPaths);
+        LOGGER.warn("Config changes require restart: {}", configPaths);
         
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server != null) {
