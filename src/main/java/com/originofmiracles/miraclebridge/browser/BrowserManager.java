@@ -63,7 +63,44 @@ public class BrowserManager {
      */
     @Nullable
     public MiracleBrowser createBrowser(String name, @Nullable String url) {
-        String actualUrl = (url == null || url.isEmpty()) ? ClientConfig.getDevServerUrl() : url;
+        // 智能选择 URL
+        String actualUrl;
+        
+        if (url != null && !url.trim().isEmpty()) {
+            // 明确指定了 URL，直接使用
+            actualUrl = url;
+        } else {
+            // 未指定 URL，根据配置自动选择
+            if (ClientConfig.shouldUseEmbeddedServer()) {
+                // 使用内置服务器
+                com.originofmiracles.miraclebridge.server.EmbeddedWebServer server = 
+                    com.originofmiracles.miraclebridge.server.EmbeddedWebServer.getInstance();
+                if (server.isRunning()) {
+                    actualUrl = server.getServerUrl();
+                    LOGGER.info("Auto-selected embedded server URL for browser '{}': {}", name, actualUrl);
+                } else {
+                    LOGGER.error("Cannot create browser '{}': embedded server not running", name);
+                    return null;
+                }
+            } else {
+                // 使用开发服务器
+                actualUrl = ClientConfig.getDevServerUrl();
+                if (actualUrl == null || actualUrl.trim().isEmpty()) {
+                    LOGGER.error("Cannot create browser '{}': dev server URL is empty", name);
+                    return null;
+                }
+                LOGGER.info("Using dev server URL for browser '{}': {}", name, actualUrl);
+            }
+        }
+        
+        // 最终验证
+        if (actualUrl == null || actualUrl.trim().isEmpty()) {
+            LOGGER.error("Cannot create browser '{}': final URL is empty", name);
+            return null;
+        }
+        
+        LOGGER.info("Creating browser '{}' with URL: {}", name, actualUrl);
+        
         return createBrowser(
                 name,
                 actualUrl,
@@ -185,10 +222,25 @@ public class BrowserManager {
     
     /**
      * 关闭所有浏览器
+     * 注意：浏览器的 OpenGL 资源必须在客户端线程上释放
      */
     public void closeAll() {
         LOGGER.info("正在关闭所有浏览器 ({})", browsers.size());
-        browsers.values().forEach(MiracleBrowser::close);
+        
+        // 保存浏览器列表的副本，避免在迭代时修改
+        List<MiracleBrowser> browsersToClose = new ArrayList<>(browsers.values());
+        
+        // 必须在客户端线程上关闭浏览器（OpenGL 上下文要求）
+        com.originofmiracles.miraclebridge.util.ThreadScheduler.runOnClientThread(() -> {
+            browsersToClose.forEach(browser -> {
+                try {
+                    browser.close();
+                } catch (Exception e) {
+                    LOGGER.error("关闭浏览器时出错", e);
+                }
+            });
+        });
+        
         browsers.clear();
         browserOrder.clear();
         currentBrowserName = null;

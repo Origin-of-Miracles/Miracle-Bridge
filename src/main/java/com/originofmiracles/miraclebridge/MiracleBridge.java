@@ -98,12 +98,15 @@ public class MiracleBridge {
             startEmbeddedServerIfNeeded();
             
             // Register bridge:// scheme handler (after MCEF initialization)
+            LOGGER.info("Scheduling MCEF initialization callback...");
             MCEF.scheduleForInit(success -> {
+                LOGGER.info("MCEF initialization callback executed, success: {}", success);
                 if (success) {
                     registerBridgeScheme();
                     registerConsoleLogger();
                     
                     // Auto-create default browser
+                    LOGGER.info("Starting default browser creation...");
                     createDefaultBrowser();
                 } else {
                     LOGGER.warn("MCEF initialization failed, bridge:// scheme not registered");
@@ -190,18 +193,48 @@ public class MiracleBridge {
     private void createDefaultBrowser() {
         try {
             // Get the URL to load
-            String url;
+            String url = null;
+            
             if (ClientConfig.shouldUseEmbeddedServer()) {
+                LOGGER.info("Using embedded web server for default browser");
                 EmbeddedWebServer server = EmbeddedWebServer.getInstance();
                 if (server.isRunning()) {
                     url = server.getServerUrl();
+                    LOGGER.info("Embedded server URL: {}", url);
                 } else {
                     LOGGER.warn("Embedded server not running, cannot create default browser");
                     return;
                 }
             } else {
-                url = ClientConfig.getDevServerUrl();
+                // Try dev server URL
+                String devUrl = ClientConfig.getDevServerUrl();
+                LOGGER.info("Attempting to use dev server: {}", devUrl);
+                
+                // TODO: 可以在这里添加 dev server 可用性检测
+                // 现在先假定配置的 URL 是可用的
+                if (devUrl != null && !devUrl.trim().isEmpty()) {
+                    url = devUrl;
+                } else {
+                    LOGGER.warn("Dev server URL is empty, falling back to embedded server");
+                    // 降级到内置服务器
+                    EmbeddedWebServer server = EmbeddedWebServer.getInstance();
+                    if (server.isRunning()) {
+                        url = server.getServerUrl();
+                        LOGGER.info("Fallback to embedded server URL: {}", url);
+                    } else {
+                        LOGGER.error("Both dev server and embedded server unavailable");
+                        return;
+                    }
+                }
             }
+            
+            // Validate URL
+            if (url == null || url.trim().isEmpty()) {
+                LOGGER.error("Cannot create default browser: URL is empty");
+                return;
+            }
+            
+            LOGGER.info("Creating default browser with URL: {}", url);
             
             // Create default browser
             MiracleBrowser browser = BrowserManager.getInstance().createBrowser(
@@ -210,9 +243,9 @@ public class MiracleBridge {
             );
             
             if (browser != null) {
-                LOGGER.info("Default browser created, loading: {}", url);
+                LOGGER.info("Default browser created successfully, loading: {}", url);
             } else {
-                LOGGER.error("Failed to create default browser");
+                LOGGER.error("Failed to create default browser (browser is null)");
             }
         } catch (Exception e) {
             LOGGER.error("Error creating default browser", e);

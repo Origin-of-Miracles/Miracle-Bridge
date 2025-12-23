@@ -46,6 +46,10 @@ usernamecache.json
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
 
+# Web Assets - 前端构建产物
+src/main/resources/assets/miraclebridge/web/assets/
+src/main/resources/assets/miraclebridge/web/index.html
+
 # Temp files
 *.tmp
 *~
@@ -57,3 +61,6 @@ replay_pid*
 
 # Statistics
 .VSCodeCounter
+# ==================== AI 配置（不上传）====================
+# GitHub Copilot 提示词配置
+.github/copilot-instructions.md
