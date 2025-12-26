@@ -100,6 +100,26 @@ public class ModNetworkHandler {
                 S2CEventPushPacket::handle
         );
         
+        // ==================== 通用事件通信数据包 ====================
+        
+        // S2C: 通用事件推送（服务端 → 客户端前端）
+        CHANNEL.registerMessage(
+                nextId(),
+                S2CPushEventPacket.class,
+                S2CPushEventPacket::encode,
+                S2CPushEventPacket::decode,
+                S2CPushEventPacket::handle
+        );
+        
+        // C2S: 通用事件发送（客户端前端 → 服务端）
+        CHANNEL.registerMessage(
+                nextId(),
+                C2SSendEventPacket.class,
+                C2SSendEventPacket::encode,
+                C2SSendEventPacket::decode,
+                C2SSendEventPacket::handle
+        );
+        
         LOGGER.debug("已注册 {} 个数据包类型", packetId);
     }
     

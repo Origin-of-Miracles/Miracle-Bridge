@@ -149,11 +149,17 @@ public class EmbeddedWebServer {
     }
     
     /**
-     * 获取服务器 URL
+     * 获取服务器 URL（带缓存破坏参数）
+     * 使用启动时间戳确保每次启动游戏后加载最新前端资源
      */
     public String getServerUrl() {
-        return running ? "http://127.0.0.1:" + port : null;
+        if (!running) return null;
+        // 添加时间戳参数避免 MCEF 缓存旧版本前端
+        return "http://127.0.0.1:" + port + "?_t=" + startTime;
     }
+    
+    // 启动时间戳，用于缓存破坏
+    private final long startTime = System.currentTimeMillis();
     
     /**
      * 获取服务器端口

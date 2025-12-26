@@ -79,6 +79,10 @@ dependencies {
     // JSR 305 Annotations (提供 @Nullable 等注解)
     compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
     
+    // Anima 模组依赖（用于监听频道事件）
+    // 在开发环境中作为编译时依赖，运行时由 mod 加载器处理
+    compileOnly files('../Anima/build/libs/anima-0.1.0-alpha.jar')
+    
     // Utilities
     implementation 'com.google.code.gson:gson:2.10.1'
 }
@@ -120,3 +124,71 @@ publishing {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+
+// ==================== Shittim-OS 前端集成 ====================
+
+// Shittim-OS 项目路径
+def shittimOsDir = file('../Shittim-OS')
+def shittimOsDistDir = file("${shittimOsDir}/dist")
+def webResourceDir = file('src/main/resources/assets/miraclebridge/web')
+
+/**
+ * 构建 Shittim-OS 前端
+ * 使用 pnpm 构建 React 应用
+ */
+task buildShittimOS(type: Exec) {
+    description = '构建 Shittim-OS 前端应用'
+    group = 'build'
+    
+    workingDir shittimOsDir
+    
+    // Windows 使用 cmd
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine 'cmd', '/c', 'pnpm build'
+    } else {
+        commandLine 'pnpm', 'build'
+    }
+    
+    // 仅当源文件变化时重新构建
+    inputs.dir("${shittimOsDir}/src")
+    inputs.file("${shittimOsDir}/package.json")
+    inputs.file("${shittimOsDir}/vite.config.ts")
+    outputs.dir(shittimOsDistDir)
+    
+    onlyIf {
+        shittimOsDir.exists() && file("${shittimOsDir}/package.json").exists()
+    }
+    
+    doFirst {
+        println "正在构建 Shittim-OS 前端..."
+    }
+}
+
+/**
+ * 同步 Shittim-OS 构建产物到资源目录
+ */
+task syncShittimOS(type: Sync) {
+    description = '同步 Shittim-OS 构建产物到 Miracle-Bridge 资源目录'
+    group = 'build'
+    
+    dependsOn buildShittimOS
+    
+    from shittimOsDistDir
+    into webResourceDir
+    
+    // 保留 bridge.js 和其他手动创建的文件
+    preserve {
+        include 'bridge.js'
+    }
+    
+    onlyIf {
+        shittimOsDistDir.exists()
+    }
+    
+    doLast {
+        println "✓ 前端资源已同步到: ${webResourceDir}"
+    }
+}
+
+// 在处理资源前同步前端
+processResources.dependsOn syncShittimOS

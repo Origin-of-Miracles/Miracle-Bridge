@@ -7,6 +7,7 @@ import com.mojang.logging.LogUtils;
 import com.originofmiracles.miraclebridge.bridge.BridgeSchemeHandler;
 import com.originofmiracles.miraclebridge.browser.BrowserConsoleLogger;
 import com.originofmiracles.miraclebridge.browser.BrowserManager;
+import com.originofmiracles.miraclebridge.browser.BrowserOverlay;
 import com.originofmiracles.miraclebridge.browser.MiracleBrowser;
 import com.originofmiracles.miraclebridge.config.ClientConfig;
 import com.originofmiracles.miraclebridge.config.ConfigReloader;
@@ -105,9 +106,13 @@ public class MiracleBridge {
                     registerBridgeScheme();
                     registerConsoleLogger();
                     
-                    // Auto-create default browser
+                    // Auto-create default browser (for BrowserScreen)
                     LOGGER.info("Starting default browser creation...");
                     createDefaultBrowser();
+                    
+                    // Initialize HUD overlay browser (for CommunicationHUD)
+                    LOGGER.info("Initializing HUD overlay browser...");
+                    initHudOverlay();
                 } else {
                     LOGGER.warn("MCEF initialization failed, bridge:// scheme not registered");
                 }
@@ -249,6 +254,48 @@ public class MiracleBridge {
             }
         } catch (Exception e) {
             LOGGER.error("Error creating default browser", e);
+        }
+    }
+    
+    /**
+     * Initialize HUD overlay browser for communication HUD
+     * This is a separate browser instance that renders transparently over the game
+     */
+    private void initHudOverlay() {
+        try {
+            String baseUrl = null;
+            
+            if (ClientConfig.shouldUseEmbeddedServer()) {
+                EmbeddedWebServer server = EmbeddedWebServer.getInstance();
+                if (server.isRunning()) {
+                    baseUrl = server.getServerUrl();
+                }
+            } else {
+                baseUrl = ClientConfig.getDevServerUrl();
+            }
+            
+            if (baseUrl == null || baseUrl.trim().isEmpty()) {
+                LOGGER.warn("Cannot initialize HUD overlay: no URL available");
+                return;
+            }
+            
+            // HUD Overlay 加载专用的 HUD 页面，而不是首页
+            // 这个页面会渲染透明的通讯 HUD
+            String hudUrl = baseUrl + "#/hud/communication";
+            
+            // Initialize with full screen size (透明背景，覆盖整个屏幕)
+            int width = ClientConfig.getBrowserWidth();
+            int height = ClientConfig.getBrowserHeight();
+            
+            BrowserOverlay overlay = BrowserOverlay.getInstance();
+            overlay.init(hudUrl, width, height);
+            
+            // Register overlay to Forge event bus for rendering
+            MinecraftForge.EVENT_BUS.register(overlay);
+            
+            LOGGER.info("HUD overlay browser initialized and registered: {} ({}x{})", hudUrl, width, height);
+        } catch (Exception e) {
+            LOGGER.error("Error initializing HUD overlay", e);
         }
     }
     

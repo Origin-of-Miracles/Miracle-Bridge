@@ -73,6 +73,15 @@ public class BridgeAPI {
             return response;
         });
         
+        // hud:exitComplete - 前端退出动画完成后调用，隐藏 HUD overlay
+        register("hud:exitComplete", request -> {
+            LOGGER.info("[BridgeAPI] 收到 hud:exitComplete，隐藏 HUD overlay");
+            com.originofmiracles.miraclebridge.browser.BrowserOverlay.getInstance().hide();
+            JsonObject response = new JsonObject();
+            response.addProperty("success", true);
+            return response;
+        });
+        
         // Example: get player info (client-side handling)
         register("getPlayerInfo", request -> {
             JsonObject response = new JsonObject();

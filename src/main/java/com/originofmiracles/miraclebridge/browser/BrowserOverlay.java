@@ -94,7 +94,10 @@ public class BrowserOverlay {
      */
     public void show() {
         visible = true;
-        LOGGER.debug("叠加层已显示");
+        LOGGER.info("叠加层已显示, visible={}, browser={}, isReady={}", 
+            visible, 
+            overlayBrowser != null ? "存在" : "null",
+            overlayBrowser != null ? overlayBrowser.isReady() : "N/A");
     }
     
     /**
@@ -160,10 +163,58 @@ public class BrowserOverlay {
     }
     
     /**
+     * 推送事件到 HUD 浏览器
+     * 
+     * @param eventType 事件类型
+     * @param jsonData JSON 数据
+     */
+    public void pushEvent(String eventType, String jsonData) {
+        if (overlayBrowser == null) {
+            LOGGER.warn("[BrowserOverlay] 无法推送事件，浏览器未初始化");
+            return;
+        }
+        
+        // 转义 JSON 字符串中的特殊字符
+        String escapedJson = jsonData
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r");
+        
+        String jsCall = String.format(
+            "(function() { " +
+            "  try { " +
+            "    var data = JSON.parse('%s'); " +
+            "    window.dispatchEvent(new CustomEvent('%s', { detail: data })); " +
+            "    console.log('[BrowserOverlay] Event dispatched: %s'); " +
+            "  } catch(e) { " +
+            "    console.error('[BrowserOverlay] Event dispatch error:', e); " +
+            "  } " +
+            "})()",
+            escapedJson,
+            eventType,
+            eventType
+        );
+        
+        overlayBrowser.executeJavaScript(jsCall);
+        LOGGER.info("[BrowserOverlay] 事件已推送到 HUD: {}", eventType);
+    }
+    
+    // 用于诊断的标志
+    private boolean firstRenderLogged = false;
+    
+    /**
      * 渲染叠加层（由事件系统调用）
      */
     @SubscribeEvent
     public void onRenderGui(RenderGuiEvent.Post event) {
+        // 诊断：为什么不渲染
+        if (visible && !firstRenderLogged) {
+            LOGGER.info("[BrowserOverlay] 渲染检查: visible={}, browser={}, isReady={}", 
+                visible, overlayBrowser != null, overlayBrowser != null ? overlayBrowser.isReady() : false);
+            firstRenderLogged = true;
+        }
+        
         if (!visible || overlayBrowser == null || !overlayBrowser.isReady()) {
             return;
         }
