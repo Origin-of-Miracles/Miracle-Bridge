@@ -37,11 +37,12 @@ public class BrowserOverlay {
         CAPTURE
     }
     
-    private static BrowserOverlay instance;
+    private static volatile BrowserOverlay instance;
+    private static final Object LOCK = new Object();
     
     @Nullable
     private MiracleBrowser overlayBrowser;
-    private String browserName = "overlay";
+    private final String browserName = "overlay";
     
     private boolean visible = false;
     private InputMode inputMode = InputMode.PASSTHROUGH;
@@ -59,7 +60,11 @@ public class BrowserOverlay {
     
     public static BrowserOverlay getInstance() {
         if (instance == null) {
-            instance = new BrowserOverlay();
+            synchronized (LOCK) {
+                if (instance == null) {
+                    instance = new BrowserOverlay();
+                }
+            }
         }
         return instance;
     }
@@ -267,9 +272,16 @@ public class BrowserOverlay {
         if (mouseX >= renderX && mouseX <= renderX + renderWidth &&
             mouseY >= renderY && mouseY <= renderY + renderHeight) {
             
+            // 防止除零错误
+            int browserWidth = overlayBrowser.getWidth();
+            int browserHeight = overlayBrowser.getHeight();
+            if (renderWidth <= 0 || renderHeight <= 0 || browserWidth <= 0 || browserHeight <= 0) {
+                return false;
+            }
+            
             // 转换为浏览器坐标
-            int browserX = (int) ((mouseX - renderX) * overlayBrowser.getWidth() / renderWidth);
-            int browserY = (int) ((mouseY - renderY) * overlayBrowser.getHeight() / renderHeight);
+            int browserX = (int) ((mouseX - renderX) * browserWidth / renderWidth);
+            int browserY = (int) ((mouseY - renderY) * browserHeight / renderHeight);
             
             overlayBrowser.sendMousePress(browserX, browserY, button);
             return true;
@@ -298,8 +310,15 @@ public class BrowserOverlay {
         if (mouseX >= renderX && mouseX <= renderX + renderWidth &&
             mouseY >= renderY && mouseY <= renderY + renderHeight) {
             
-            int browserX = (int) ((mouseX - renderX) * overlayBrowser.getWidth() / renderWidth);
-            int browserY = (int) ((mouseY - renderY) * overlayBrowser.getHeight() / renderHeight);
+            // 防止除零错误
+            int browserWidth = overlayBrowser.getWidth();
+            int browserHeight = overlayBrowser.getHeight();
+            if (renderWidth <= 0 || renderHeight <= 0 || browserWidth <= 0 || browserHeight <= 0) {
+                return false;
+            }
+            
+            int browserX = (int) ((mouseX - renderX) * browserWidth / renderWidth);
+            int browserY = (int) ((mouseY - renderY) * browserHeight / renderHeight);
             
             overlayBrowser.sendMouseRelease(browserX, browserY, button);
             return true;

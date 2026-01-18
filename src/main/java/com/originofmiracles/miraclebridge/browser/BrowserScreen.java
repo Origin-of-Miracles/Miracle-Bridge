@@ -249,7 +249,13 @@ public class BrowserScreen extends Screen {
         
         // F5 刷新
         if (keyCode == GLFW.GLFW_KEY_F5 && browser != null) {
-            browser.loadUrl(browser.getRawBrowser() != null ? browser.getRawBrowser().getURL() : "");
+            var rawBrowser = browser.getRawBrowser();
+            if (rawBrowser != null) {
+                String currentUrl = rawBrowser.getURL();
+                if (currentUrl != null && !currentUrl.isEmpty()) {
+                    browser.loadUrl(currentUrl);
+                }
+            }
             return true;
         }
         

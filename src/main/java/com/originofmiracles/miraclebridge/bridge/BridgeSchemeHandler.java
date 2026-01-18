@@ -1,8 +1,5 @@
 package com.originofmiracles.miraclebridge.bridge;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 import org.cef.callback.CefCallback;
@@ -14,7 +11,6 @@ import org.cef.network.CefResponse;
 import org.slf4j.Logger;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
 import com.originofmiracles.miraclebridge.browser.BrowserManager;
 import com.originofmiracles.miraclebridge.browser.MiracleBrowser;

@@ -250,8 +250,11 @@ public class ForgeEventBridge {
             data.addProperty("maxHealth", living.getMaxHealth());
         }
         
-        if (entity.hasCustomName() && entity.getCustomName() != null) {
-            data.addProperty("customName", entity.getCustomName().getString());
+        if (entity.hasCustomName()) {
+            var customName = entity.getCustomName();
+            if (customName != null) {
+                data.addProperty("customName", customName.getString());
+            }
         }
         
         return data;

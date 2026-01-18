@@ -70,18 +70,23 @@ public class EmbeddedWebServer {
         MIME_TYPES.put("xml", "application/xml");
     }
     
-    private static EmbeddedWebServer instance;
+    private static volatile EmbeddedWebServer instance;
+    private static final Object LOCK = new Object();
     
     private HttpServer server;
     private int port;
     private boolean running = false;
     
     /**
-     * 获取单例实例
+     * 获取单例实例（线程安全）
      */
     public static EmbeddedWebServer getInstance() {
         if (instance == null) {
-            instance = new EmbeddedWebServer();
+            synchronized (LOCK) {
+                if (instance == null) {
+                    instance = new EmbeddedWebServer();
+                }
+            }
         }
         return instance;
     }

@@ -1,6 +1,5 @@
 package com.originofmiracles.miraclebridge.bridge;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -46,7 +45,7 @@ public class BridgeAPI {
     private static final Gson GSON = new Gson();
     
     private final MiracleBrowser browser;
-    private final Map<String, BridgeHandler> handlers = new HashMap<>();
+    private final Map<String, BridgeHandler> handlers = new ConcurrentHashMap<>();
     
     /**
      * 待处理的服务端请求（线程安全）

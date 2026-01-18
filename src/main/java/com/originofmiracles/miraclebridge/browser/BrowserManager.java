@@ -20,7 +20,8 @@ public class BrowserManager {
     
     private static final Logger LOGGER = LogUtils.getLogger();
     
-    private static BrowserManager instance;
+    private static volatile BrowserManager instance;
+    private static final Object LOCK = new Object();
     
     /**
      * 默认浏览器名称
@@ -49,7 +50,11 @@ public class BrowserManager {
     
     public static BrowserManager getInstance() {
         if (instance == null) {
-            instance = new BrowserManager();
+            synchronized (LOCK) {
+                if (instance == null) {
+                    instance = new BrowserManager();
+                }
+            }
         }
         return instance;
     }

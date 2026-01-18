@@ -127,7 +127,9 @@ public class MiracleBrowser {
      * @return texture ID, or -1 if browser not ready
      */
     public int getTextureId() {
-        return browser != null ? browser.getRenderer().getTextureID() : -1;
+        if (browser == null) return -1;
+        var renderer = browser.getRenderer();
+        return renderer != null ? renderer.getTextureID() : -1;
     }
     
     /**

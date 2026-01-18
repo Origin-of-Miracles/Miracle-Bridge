@@ -189,20 +189,16 @@ public class BridgeMessageQueue {
      * @return JSON array string
      */
     public String pollAllResponses(int maxCount) {
-        StringBuilder sb = new StringBuilder("[");
+        com.google.gson.JsonArray array = new com.google.gson.JsonArray();
         int count = 0;
         Message message;
         
         while (count < maxCount && (message = responseQueue.poll()) != null) {
-            if (count > 0) {
-                sb.append(",");
-            }
-            sb.append(GSON.toJson(message.toJson()));
+            array.add(message.toJson());
             count++;
         }
         
-        sb.append("]");
-        return sb.toString();
+        return GSON.toJson(array);
     }
     
     /**
@@ -241,20 +237,16 @@ public class BridgeMessageQueue {
      * @return JSON array string
      */
     public String pollAllEvents(int maxCount) {
-        StringBuilder sb = new StringBuilder("[");
+        com.google.gson.JsonArray array = new com.google.gson.JsonArray();
         int count = 0;
         Message message;
         
         while (count < maxCount && (message = eventQueue.poll()) != null) {
-            if (count > 0) {
-                sb.append(",");
-            }
-            sb.append(GSON.toJson(message.toJson()));
+            array.add(message.toJson());
             count++;
         }
         
-        sb.append("]");
-        return sb.toString();
+        return GSON.toJson(array);
     }
     
     /**

@@ -217,23 +217,29 @@ public class ThreadScheduler {
     public static ScheduledFuture<?> runRepeating(Supplier<Boolean> task, int periodTicks) {
         long periodMs = periodTicks * 50L; // 1 tick = 50ms
         
-        final ScheduledFuture<?>[] futureHolder = new ScheduledFuture<?>[1];
+        final java.util.concurrent.atomic.AtomicReference<ScheduledFuture<?>> futureRef = 
+            new java.util.concurrent.atomic.AtomicReference<>();
         
-        futureHolder[0] = SCHEDULED_EXECUTOR.scheduleAtFixedRate(() -> {
+        ScheduledFuture<?> future = SCHEDULED_EXECUTOR.scheduleAtFixedRate(() -> {
             try {
                 boolean shouldContinue = task.get();
-                if (!shouldContinue && futureHolder[0] != null) {
-                    futureHolder[0].cancel(false);
+                if (!shouldContinue) {
+                    ScheduledFuture<?> f = futureRef.get();
+                    if (f != null) {
+                        f.cancel(false);
+                    }
                 }
             } catch (Exception e) {
                 LOGGER.error("Error in repeating task", e);
-                if (futureHolder[0] != null) {
-                    futureHolder[0].cancel(false);
+                ScheduledFuture<?> f = futureRef.get();
+                if (f != null) {
+                    f.cancel(false);
                 }
             }
-        }, 0, periodMs, TimeUnit.MILLISECONDS);
+        }, periodMs, periodMs, TimeUnit.MILLISECONDS); // 使用 initialDelay = periodMs 避免立即执行
         
-        return futureHolder[0];
+        futureRef.set(future);
+        return future;
     }
     
     /**
