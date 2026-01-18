@@ -134,7 +134,7 @@ def webResourceDir = file('src/main/resources/assets/miraclebridge/web')
 
 /**
  * 构建 Shittim-OS 前端
- * 使用 pnpm 构建 React 应用
+ * 使用 npx vite build（比 pnpm build 更稳定）
  */
 task buildShittimOS(type: Exec) {
     description = '构建 Shittim-OS 前端应用'
@@ -142,11 +142,11 @@ task buildShittimOS(type: Exec) {
     
     workingDir shittimOsDir
     
-    // Windows 使用 cmd
+    // Windows 使用 cmd，直接调用 npx vite build
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-        commandLine 'cmd', '/c', 'pnpm build'
+        commandLine 'cmd', '/c', 'npx vite build'
     } else {
-        commandLine 'pnpm', 'build'
+        commandLine 'npx', 'vite', 'build'
     }
     
     // 仅当源文件变化时重新构建

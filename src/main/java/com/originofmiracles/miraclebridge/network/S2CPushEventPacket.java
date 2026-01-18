@@ -63,21 +63,23 @@ public class S2CPushEventPacket {
     private static void handleOnClient(S2CPushEventPacket packet) {
         LOGGER.info("[S2CPushEvent] 收到服务端事件: {} ({}字节)", packet.eventType, packet.jsonData.length());
         
+        BrowserOverlay overlay = BrowserOverlay.getInstance();
+        
         // 如果是频道加入事件，自动显示浏览器覆盖层并推送事件到 HUD
         if ("channel:joined".equals(packet.eventType)) {
             LOGGER.info("[S2CPushEvent] 检测到 channel:joined 事件，自动显示 HUD 覆盖层");
-            BrowserOverlay overlay = BrowserOverlay.getInstance();
             overlay.show();
-            // 推送事件到 HUD 浏览器
             overlay.pushEvent(packet.eventType, packet.jsonData);
         }
-        
         // 如果是频道离开/关闭事件，触发前端退出动画
-        // 注意：不直接隐藏 overlay，而是让前端播放退出动画后通过 hud:exitComplete 事件通知
-        if ("channel:closed".equals(packet.eventType) || "channel:left".equals(packet.eventType)) {
+        else if ("channel:closed".equals(packet.eventType) || "channel:left".equals(packet.eventType)) {
             LOGGER.info("[S2CPushEvent] 检测到频道关闭事件，触发前端退出动画");
-            // 推送事件到 HUD 浏览器
-            BrowserOverlay.getInstance().pushEvent(packet.eventType, packet.jsonData);
+            overlay.pushEvent(packet.eventType, packet.jsonData);
+        }
+        // 其他所有频道相关事件也推送到 HUD
+        else if (packet.eventType.startsWith("channel:")) {
+            LOGGER.debug("[S2CPushEvent] 推送频道事件到 HUD: {}", packet.eventType);
+            overlay.pushEvent(packet.eventType, packet.jsonData);
         }
         
         // 推送到主浏览器（BrowserScreen）

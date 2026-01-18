@@ -280,8 +280,8 @@ public class MiracleBridge {
             }
             
             // HUD Overlay 加载专用的 HUD 页面，而不是首页
-            // 这个页面会渲染透明的通讯 HUD
-            String hudUrl = baseUrl + "#/hud/communication";
+            // 这个页面会渲染透明的通讯 HUD（像素风 Toast）
+            String hudUrl = baseUrl + "#/hud/sidebar";
             
             // Initialize with full screen size (透明背景，覆盖整个屏幕)
             int width = ClientConfig.getBrowserWidth();
